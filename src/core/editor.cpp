@@ -16,8 +16,7 @@ static void worldToScreen(const Viewport& vp, const Vec3& p, float& sx, float& s
     sy = (vp.y + vp.h / 2) - (getAxis(p, vp.axisY) - vp.centerY) * vp.scale;
 }
 
-// screen pixel to world, no contains() guard so a drag that leaves the
-// viewport still tracks
+// screen pixel to world
 static void viewportWorld(const Viewport& vp, int px, int py, float& wx, float& wy)
 {
     const float fsx = vp.flipped ? -1.0f : 1.0f;
@@ -28,8 +27,7 @@ static void viewportWorld(const Viewport& vp, int px, int py, float& wx, float& 
 static bool pointInTri(float px, float py, float ax, float ay, float bx,
                        float by, float cx, float cy)
 {
-    // reject zero-area triangles; otherwise every point tests "inside" (all
-    // edge signs ~0), which matters since tris are stored as quads {a,b,c,c}
+    // reject zero-area triangles
     const float area2 = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
     if (fabsf(area2) < 1.0f)
         return false;
@@ -39,7 +37,7 @@ static bool pointInTri(float px, float py, float ax, float ay, float bx,
     const float d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
     const bool neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
     const bool pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-    return !(neg && pos); // inside if all same sign (winding-agnostic)
+    return !(neg && pos); // inside if all same sign (winding agnostic)
 }
 
 Editor::Editor()

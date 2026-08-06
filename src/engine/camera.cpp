@@ -18,7 +18,7 @@ void Camera::update(const circlePosition& pad, u32 held, float dt)
     if (dt > 0.1f)
         dt = 0.1f;
 
-    // circle pad rarely rests at exactly (0,0), so deadzone and rescale
+    // circle pad deadzone
     static constexpr float kDeadzone = 12.0f;
     const float rawX = (float)pad.dx;
     const float rawY = (float)pad.dy;
@@ -59,7 +59,7 @@ void Camera::update(const circlePosition& pad, u32 held, float dt)
     }
     else if (held & KEY_R)
     {
-        // zoom: push up to get closer
+        // circle pad zoom
         distance *= expf(-ny * kZoomSpeed * dt);
         if (distance < kMinDistance)
             distance = kMinDistance;
@@ -77,8 +77,7 @@ void Camera::update(const circlePosition& pad, u32 held, float dt)
             pitch = -kMaxPitch;
     }
 
-    // D-pad up/down zooms without needing a trigger, so the view is usable with
-    // the console flat on a desk
+    // dpad zoom
     if (held & (KEY_DUP | KEY_DDOWN))
     {
         const float dz = (held & KEY_DUP) ? 1.0f : -1.0f;

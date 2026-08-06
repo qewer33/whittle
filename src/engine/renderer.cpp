@@ -473,10 +473,10 @@ static const float kLetY[3][4] = {
 static const float kLetZ[3][4] = {
     {-0.4f, 0.5f, 0.4f, 0.5f}, {0.4f, 0.5f, -0.4f, -0.5f}, {-0.4f, -0.5f, 0.4f, -0.5f}};
 
-// A small XYZ axis indicator pinned to the bottom-right of the preview. It's
-// placed in view space (fixed distance + offset from the camera) so it stays a
-// constant screen size and position, and drawn through the normal projection so
-// the 3DS screen tilt is handled for free. Lines are depth-off, so it's on top.
+// Small XYZ axis indicator in the bottom-left of the preview, placed in view
+// space (fixed offset from the camera) so it holds a constant screen size and
+// position. Drawn orthographic so the axes stay parallel to the model's instead
+// of skewing toward the screen corner. Depth-off, so it draws on top.
 void Renderer::drawGizmo(const Camera& camera)
 {
     const Vec3 e = camera.eye();

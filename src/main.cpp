@@ -77,13 +77,12 @@ int main()
         if (editor.is3D())
             editor.renderViewports(renderer);
 
-        // our line pass clobbered the GPU state; hand it to citro2d for the UI.
-        // C2D batches into the same frame, flushed by endFrame()
+        // hand it to citro2d for the UI
         C2D_Prepare();
         C2D_SceneBegin(renderer.bottomTarget());
         ui::draw(editor, renderer.texture());
 
-        renderer.endFrame();
+        renderer.endFrame(); // flush
     }
 
     icons::exit();

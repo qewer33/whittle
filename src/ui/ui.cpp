@@ -331,7 +331,7 @@ namespace ui
         }
         else
         {
-            // mode button (icon + label) bottom-left, like the model mode
+            // mode button (icon + label), bottom-left
             const Rect& tm = editor.tex.btnTexMode;
             const int texIdx = (int)editor.tex.texMode;
             if (editor.tex.texModeMenuOpen)
@@ -368,8 +368,8 @@ namespace ui
         if (editor.is3D())
         {
             // gutters in the toolbar color: an outer frame around the ortho area
-            // plus the dividers between views, so they read as framed panels.
-            // one shared width, centered on each edge (no doubling at seams).
+            // plus the dividers between views. one shared width, centered on each
+            // edge (no doubling at seams).
             const u32 bc = conv(kBarBg);
             const int G = 3;
             const int ax0 = 0, ay0 = topH, aw = 320, ah = bm.y - topH;

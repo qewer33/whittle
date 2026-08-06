@@ -203,7 +203,7 @@ void TextureEditor::navCanvas(const circlePosition& pad, u32 held)
     if (fabsf((float)pad.dy) > kDead)
         canvasY += (pad.dy / 156.0f) * kPan;
 
-    // zoom around the canvas-area center (L/R or, desk-friendly, D-pad up/down)
+    // zoom around the canvas-area center (L/R or D-pad up/down)
     float factor = 1.0f;
     if (held & (KEY_L | KEY_DUP))
         factor = kZoom;

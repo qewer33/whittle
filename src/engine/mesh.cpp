@@ -73,8 +73,6 @@ Mesh makeCube(float size)
 
 // primitive helpers
 
-// quad (a,b,c,d), flat single color. the renderer's runtime shading gives the
-// preview its 3D look; the ortho views stay flat.
 static Face quad(const std::vector<Vec3>& P, int a, int b, int c, int d, u32 base)
 {
     (void)P;
@@ -100,7 +98,7 @@ Mesh makePlane(float size)
     const u32 base = 0xB0B0B8FF;
     m.positions = {{-s, 0, -s}, {s, 0, -s}, {s, 0, s}, {-s, 0, s}};
     m.faces.push_back(quad(m.positions, 0, 3, 2, 1, base)); // +Y up
-    m.faces.push_back(quad(m.positions, 0, 1, 2, 3, base)); // -Y down (double-sided)
+    m.faces.push_back(quad(m.positions, 0, 1, 2, 3, base)); // -Y down (double sided)
     return m;
 }
 

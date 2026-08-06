@@ -6,7 +6,7 @@
 // scene save file on the SD card
 static const char* const kSavePath = "sdmc:/m1model.dat";
 static const u32 kSaveMagic = 0x314D444D; // "MDM1"
-static const u32 kSaveVersion = 3;        // v2: face textured+uvs, v3: + texture
+static const u32 kSaveVersion = 3;
 
 Scene::Scene()
 {
@@ -174,9 +174,7 @@ void Scene::deleteSelectedVerts()
     clearSelection();
 }
 
-// Split each selected face into 4. Quads use 4 edge midpoints + a center; tris
-// use 3 edge midpoints. Edge midpoints are shared across selected faces (a
-// subdivided region stays welded); UVs are interpolated per face corner.
+// subdivide each selected face into 4
 void Scene::subdivideSelectedFaces()
 {
     if (selectedFaces.empty())
@@ -206,7 +204,7 @@ void Scene::subdivideSelectedFaces()
             return idx;
         };
 
-        std::vector<Face> extra; // sub-faces past the first (appended after)
+        std::vector<Face> extra; // sub faces past the first (appended after)
         for (int fi : sel)
         {
             const Face f = m.faces[fi]; // copy: the slot gets overwritten below
@@ -277,10 +275,7 @@ void Scene::subdivideSelectedFaces()
     clearSelection();
 }
 
-// Loop cut from each selected edge: follow the ring of parallel edges (each
-// quad connects an edge to its opposite) and split every quad in the ring,
-// sharing the inserted midpoints so there are no T-junctions. Tris don't carry
-// a loop, so the ring stops at them.
+// loop cut from each selected edge
 void Scene::splitSelectedEdges()
 {
     if (selectedEdges.empty())
@@ -472,10 +467,7 @@ void Scene::untextureAllFaces()
             f.textured = false;
 }
 
-// Extrude every selected face: duplicate its verts into a new cap (which keeps
-// the selection so the next drag pulls it out), and wall the border edges. A
-// connected region shares cap verts and only walls its outer boundary. Verts
-// shared between selected faces are reused; interior edges get no wall.
+// extrude every selected face
 void Scene::extrudeSelectedFaces()
 {
     if (selectedFaces.empty())
