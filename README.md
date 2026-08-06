@@ -23,7 +23,7 @@ Move the `.3dsx` file in the Releases section to the `3ds/` folder on your SD ca
 
 whittle has two main *workspaces* (3D & 2D), the 3D workspca is for working with the general geometry and the 3D appereance of the model while the 2D workspace is for working on the texture atlas and UV mapping. Each workspace has different *modes* to do different tasks.
 
-## 3D Workspace
+### 3D Workspace
 
 The **3D workspace** has the base tools for 3D modelling, geometry editing and painting/texturing the model.
 
@@ -33,7 +33,7 @@ Below are a list of the modes in the 3D workspace with explanations:
 - **Paint**: The **Paint mode** allows you to paint faces of objects in soid colors. It provides 2 tools: **Brush** and **Picker**.
 - **Texture**: The **Texture mode** allows you to texture the faces of objects. It provides 2 tools: **Texture** and **Untexture**.
 
-## 2D Workspace
+### 2D Workspace
 
 The **2D workspace** has tools for editing the texture atlas of the model and UV mapping the textured geometry faces onto the texture atlas.
 
