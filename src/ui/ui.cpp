@@ -98,12 +98,10 @@ namespace
         }
     }
 
-    // left-aligned text, vertically centered in [y, y+h]. the +2 fudge accounts
-    // for the descender space C2D includes in the measured height, which would
-    // otherwise leave the visible glyphs sitting too high
+    // left-aligned text, vertically centered in [y, y+h]
     void textLeft(C2D_Text* t, float th, float x, float y, float h)
     {
-        C2D_DrawText(t, C2D_WithColor, x, y + (h - th) / 2.0f + 1.0f, 0.0f,
+        C2D_DrawText(t, C2D_WithColor, x, y + (h - th) / 2.0f, 0.0f,
                      kTextScale, kTextScale, conv(kTextCol));
     }
 
@@ -158,7 +156,7 @@ namespace
         outline(r.x, r.y, r.w, r.h, kBorderCol);
         float tw, hh;
         C2D_TextGetDimensions(t, kTextScale, kTextScale, &tw, &hh);
-        C2D_DrawText(t, C2D_WithColor, r.x + (r.w - tw) / 2.0f, r.y + (r.h - th) / 2.0f + 1.0f, 0.0f,
+        C2D_DrawText(t, C2D_WithColor, r.x + (r.w - tw) / 2.0f, r.y + (r.h - th) / 2.0f, 0.0f,
                      kTextScale, kTextScale, conv(enabled ? kTextCol : kIconDim));
     }
 
@@ -173,7 +171,7 @@ namespace
         if (sx < r.x + 3)
             sx = r.x + 3;
         icons::draw(ic, sx, r.y + (r.h - kIcon) / 2.0f, kIcon, enabled ? kIconIdle : kIconDim);
-        C2D_DrawText(t, C2D_WithColor, sx + kIcon + 4, r.y + (r.h - th) / 2.0f + 1.0f, 0.0f,
+        C2D_DrawText(t, C2D_WithColor, sx + kIcon + 4, r.y + (r.h - th) / 2.0f, 0.0f,
                      kTextScale, kTextScale, conv(enabled ? kTextCol : kIconDim));
     }
 
@@ -202,7 +200,7 @@ namespace
             const bool sel = i == b.selected;
             if (sel)
                 C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(kActiveBg));
-            browserText(b.entries[i].name.c_str(), r.x + 10, r.y + (r.h - browserLabelH[0]) / 2.0f + 1.0f,
+            browserText(b.entries[i].name.c_str(), r.x + 10, r.y + (r.h - browserLabelH[0]) / 2.0f,
                         sel ? kIconActive : kTextCol);
             C2D_DrawRectSolid(r.x, r.y + r.h - 1, 0.0f, r.w, 1, conv(kBarBg));
         }
