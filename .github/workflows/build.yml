@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# a newer push to the same ref cancels an in-flight build
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # official devkitPro image
+    container: devkitpro/devkitarm:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: bash build.sh
+
+      - name: Upload 3dsx
+        uses: actions/upload-artifact@v4
+        with:
+          name: whittle-${{ github.sha }}
+          path: |
+            build/whittle.3dsx
+            build/whittle.smdh
+          if-no-files-found: error
+
+  # rolling release
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: whittle-${{ github.sha }}
+          path: dist
+
+      - name: Update Current Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete current --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create current dist/whittle.3dsx dist/whittle.smdh \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Current Release" \
+            --notes "Latest build from ${GITHUB_SHA:0:7}." \
+            --latest
