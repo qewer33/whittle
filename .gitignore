@@ -1,0 +1,7 @@
+.cache/
+build/
+*.3dsx
+*.smdh
+*.elf
+*.cia
+compile_commands.json
