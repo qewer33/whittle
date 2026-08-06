@@ -18,7 +18,7 @@ Move the `.3dsx` file in the Releases section to the `3ds/` folder on your SD ca
 
 **whittle**'s workflow is *optimized for low-poly modelling* and is rather similar to that of **picoCAD**'s. whittle also takes advantage of the dual screens of the 3DS, the *top screen is reserved exclusively for the model preview*, while the *bottom touchscreen houses all of the editing functionality and view options*, intended to be used with the 3DS stylus.
 
-whittle has two main *workspaces* (3D & 2D), the 3D workspca is for working with the general geometry and the 3D appereance of the model while the 2D workbench is for working on the texture atlas and UV mapping. Each workspace has different *modes* to do different tasks.
+whittle has two main *workspaces* (3D & 2D), the 3D workspca is for working with the general geometry and the 3D appereance of the model while the 2D workspace is for working on the texture atlas and UV mapping. Each workspace has different *modes* to do different tasks.
 
 ## 3D Workspace
 
@@ -34,7 +34,7 @@ Below are a list of the modes in the 3D workspace with explanations:
 
 The **2D workspace** has tools for editing the texture atlas of the model and UV mapping the textured geometry faces onto the texture atlas.
 
-Below are a list of the modes in the 3D workspace with explanations:
+Below are a list of the modes in the 2D workspace with explanations:
 - **Paint**: The **Paint mode** provides a simple pixelart editor that allows you to edit the global 128x128 texture atlas. It provides 3 tools: **Brush**, **Bucket** and **Picker**.
 - **UV**: The **UV mode** allows you to edit the UV maps of textured faces.
 
@@ -52,4 +52,28 @@ Some useful Bash (Linux CLI) scripts for development.
 
 ### Modelling Engine
 
-whittle works with meshes represented as a *"triangle/quad soup" format*, basically a collection of the shapes vertices and faces without any structural adjacency data attached (see `src/engine/mesh.cpp`). It's not idal but works good enough for now for low-poly models, it will be improved in the future. This format also makes rendering very easy (see `src/engine/renderer.cpp`).
+#### Mesh Representation
+
+whittle works with meshes represented as a *"quad soup" format*, basically a collection of the shapes vertices and faces without any structural adjacency data attached (see `src/engine/mesh.cpp`). It's not ideal but works good enough for now for low-poly models, it will be improved in the future. This format also makes rendering very easy (see `src/engine/renderer.cpp`). Also triangles are stored as degenerate quads (last index repeated), so yeah everything is a quad.
+
+#### Document Model
+
+The model "document" is represented by the *Scene* (see `src/core/scene.cpp`). It holds a list of meshes, selection sets, the shared texture atlas and the undo/redo buffers. It does not contain any input or drawing code.
+
+The Scene also holds the *actual 3D modelling operations*. Since we have no adjacency data in meshes rn, operations generally calculate the topology information they need locally on the fly.
+
+### The Renderer
+
+The renderer owns the **citro3d** pipeline (the 3D renderer from **devkitpro**). Everything rendered in 3D goes to a shader vertex format and a single very simple shader (see `src/engine/shaders/main.v.pica`).
+
+As mentioned in the mesh representation section, since the meshes are quad soups, the renderer basically fans out and renders each quad as two triangles.
+
+Also since the PICA200 (3DS's GPU) has no line primitive, wireframe/edges/grid/gizmo are CPU-projected and drawn as thin screen-space quads.
+
+### Orthographic Viewports & Preview Camera
+
+Orthographic viewports are where the editing happens on the bottom screen. The *Viewport* is basically a single ortho view (see `src/engine/viewport.cpp`), it handles it's own projection matrix and also converts the bottom screen stylus taps to it's world coordinates.
+
+The top preview is rendered with a *Camera* (see `src/engine/camera.cpp`), it handles zoom/pan/orbit.
+
+### Interaction Engine
