@@ -10,6 +10,9 @@
 > [!NOTE]
 > Also if you're a 3D artist and liked whittle, **please contact me on Discord (@qewer33)**, I need feedback from artists to streamline the UX and add missing features.
 
+> [!NOTE]
+> So far whittle has only been tested on a *New 3DS XL* since that's the only model I have but **it should work on all 3DS/2DS** models, please report back if you test on any other models!
+
 ## Installation
 
 Move the `.3dsx` file in the Releases section to the `3ds/` folder on your SD card. Then launch it in the 3DS from the Homebrew Launcher.
@@ -60,9 +63,9 @@ whittle works with meshes represented as a *"quad soup" format*, basically a col
 
 The model "document" is represented by the *Scene* (see `src/core/scene.cpp`). It holds a list of meshes, selection sets, the shared texture atlas and the undo/redo buffers. It does not contain any input or drawing code.
 
-The Scene also holds the *actual 3D modelling operations*. Since we have no adjacency data in meshes rn, operations generally calculate the topology information they need locally on the fly.
+The *Scene* also holds the *actual 3D modelling operations*. Since we have no adjacency data in meshes rn, operations generally calculate the topology information they need locally on the fly.
 
-### The Renderer
+#### The Renderer
 
 The renderer owns the **citro3d** pipeline (the 3D renderer from **devkitpro**). Everything rendered in 3D goes to a shader vertex format and a single very simple shader (see `src/engine/shaders/main.v.pica`).
 
@@ -70,10 +73,24 @@ As mentioned in the mesh representation section, since the meshes are quad soups
 
 Also since the PICA200 (3DS's GPU) has no line primitive, wireframe/edges/grid/gizmo are CPU-projected and drawn as thin screen-space quads.
 
-### Orthographic Viewports & Preview Camera
+#### Orthographic Viewports & Preview Camera
 
 Orthographic viewports are where the editing happens on the bottom screen. The *Viewport* is basically a single ortho view (see `src/engine/viewport.cpp`), it handles it's own projection matrix and also converts the bottom screen stylus taps to it's world coordinates.
 
 The top preview is rendered with a *Camera* (see `src/engine/camera.cpp`), it handles zoom/pan/orbit.
 
-### Interaction Engine
+### UI & Interaction Engine
+
+#### 3D & 2D Workspaces
+
+*Editor* (see `src/core/editor.cpp`) drives the *3D workspace*, the orthographic viewports, object/geometry editing and painting/texturing. It also currently handles the top and bottom toolbars.
+
+*TextureEditor* (see `src/core/textureeditor.cpp`) drives the *2D workspace*, the texture atlas paint canvas and the UV editor. *TextureEditor* is owned by the *Editor*. The *Editor* also holds the workspace switch state.
+
+The *Mode* and *Tool* select state machines are also managed by the *Editor*, along with toolbar & popup states and view flags. *Editor* is basically the owner class of the entire editing UI.
+
+#### Input
+
+The input is handled by 3 handlers called by `main`: `handleKeys` (physical 3DS buttons), `handleTouchDown`/`handleTouchMove`/`handleTouchUp` (the classic touch handler trio for the stylus) and the circle pad which is routed to the *Camera* for 3D view control or `tex.navCanvas` for 2D canvas navigation.
+
+`handleTouchDown` also handles the touch priority with the way it's written: open popups -> top-bar buttons -> workspace input -> bottom bar buttons -> ortho maximize toggles -> the ortho viewports themselves.
