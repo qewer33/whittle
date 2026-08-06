@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-FTP_HOST="${FTP_HOST:-192.168.1.42}"
+FTP_HOST="${FTP_HOST:-192.168.1.44}"
 FTP_PORT="${FTP_PORT:-5000}"
 DEST_DIR="${DEST_DIR:-/3ds/whittle}"
 

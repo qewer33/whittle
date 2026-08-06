@@ -5,7 +5,7 @@
 ![showcase](./assets/showcase.png)
 
 > [!IMPORTANT]
-> **LOGO NEEDED**: If any artists wants to create a high quality 3D logo for whittle (preferablly something whittling/wood related, maybe a low-poly bird woodcarving?) using whittle, I will make it the official logo :D 
+> **LOGO NEEDED**: If any artist wants to create a high quality 3D logo for whittle (preferably something whittling/wood related, maybe a low-poly bird woodcarving?) using whittle, I will make it the official logo :D 
 
 > [!NOTE]
 > Also if you're a 3D artist and liked whittle, **please contact me on Discord (@qewer33)**, I need feedback from artists to streamline the UX and add missing features.
@@ -18,7 +18,7 @@ Move the `.3dsx` file in the Releases section to the `3ds/` folder on your SD ca
 
 **whittle**'s workflow is *optimized for low-poly modelling* and is rather similar to that of **picoCAD**'s. whittle also takes advantage of the dual screens of the 3DS, the *top screen is reserved exclusively for the model preview*, while the *bottom touchscreen houses all of the editing functionality and view options*, intended to be used with the 3DS stylus.
 
-**whittle** has two main *workspaces* (3D & 2D), the 3D workspca is for working with the general geometry and the 3D appereance of the model while the 2D workbench is for working on the texture atlas and UV mapping. Each workspace has different *modes* to do different tasks.
+whittle has two main *workspaces* (3D & 2D), the 3D workspca is for working with the general geometry and the 3D appereance of the model while the 2D workbench is for working on the texture atlas and UV mapping. Each workspace has different *modes* to do different tasks.
 
 ## 3D Workspace
 
@@ -49,3 +49,7 @@ Some useful Bash (Linux CLI) scripts for development.
 - `build.sh`: Builds the program to the `build/` folder.
 - `run.sh`: Builds the program and opens it in Azahar (3DS emulator).
 - `sync.sh`: Sends the program to a given FTP host (`FTP_HOST=<host>`). Useful for syncing the program to the 3DS.
+
+### Modelling Engine
+
+whittle works with meshes represented as a *"triangle/quad soup" format*, basically a collection of the shapes vertices and faces without any structural adjacency data attached (see `src/engine/mesh.cpp`). It's not idal but works good enough for now for low-poly models, it will be improved in the future. This format also makes rendering very easy (see `src/engine/renderer.cpp`).
