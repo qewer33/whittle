@@ -2,6 +2,8 @@
 
 **whittle** is an experimental homebrew low-poly 3D modelling app for the 3DS.
 
+![showcase](./assets/showcase.png)
+
 > [!IMPORTANT]
 > **LOGO NEEDED**: If any artists wants to create a high quality 3D logo for whittle (preferablly something whittling/wood related, maybe a low-poly bird woodcarving?) using whittle, I will make it the official logo :D 
 
