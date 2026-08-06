@@ -47,6 +47,10 @@ int main()
 
         editor.handleKeys(kDown);
 
+        // run any pending file-menu action (may open the keyboard applet) here,
+        // between frames
+        editor.serviceFileOps();
+
         const u32 now = osGetTime();
         const float dt = (float)(now - prevTicks) / 1000.0f;
         prevTicks = now;
@@ -54,7 +58,9 @@ int main()
 
         circlePosition pad;
         hidCircleRead(&pad);
-        if (editor.is2D())
+        if (editor.screen == AppScreen::Browser)
+            editor.browser.update(dt);
+        else if (editor.is2D())
             editor.tex.navCanvas(pad, hidKeysHeld());
         else
         {
@@ -71,14 +77,20 @@ int main()
         renderer.beginFrame();
 
         renderer.drawOn(renderer.topTarget());
-        renderer.drawPreview(editor.scene.objects, camera, editor.wireframe, editor.shading);
+        if (editor.screen == AppScreen::Browser)
+            renderer.drawPreview(editor.browser.preview, editor.browser.camera, false, editor.shading);
+        else
+            renderer.drawPreview(editor.scene.objects, camera, editor.wireframe, editor.shading);
 
         renderer.drawOn(renderer.bottomTarget());
-        if (editor.is3D())
+        if (editor.screen == AppScreen::Editor && editor.is3D())
             editor.renderViewports(renderer);
 
-        // hand it to citro2d for the UI
+        // hand it to citro2d for the UI. top screen gets the project-name
+        // overlay, bottom gets the toolbars/canvas.
         C2D_Prepare();
+        C2D_SceneBegin(renderer.topTarget());
+        ui::drawTop(editor);
         C2D_SceneBegin(renderer.bottomTarget());
         ui::draw(editor, renderer.texture());
 

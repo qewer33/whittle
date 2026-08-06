@@ -1,7 +1,9 @@
 #include "editor.h"
 #include "viewrender.h"
+#include "platform.h"
 #include <algorithm>
 #include <math.h>
+#include <string>
 
 static float snapToGrid(float v, float grid)
 {
@@ -100,6 +102,30 @@ void Editor::setStatus(const char* m)
 {
     statusMsg = m;
     statusTime = 1.6f;
+}
+
+void Editor::serviceFileOps()
+{
+    const FileOp op = pendingFileOp;
+    pendingFileOp = FileOp::None;
+    if (op == FileOp::Save)
+    {
+        if (scene.projectPath.empty()) // untitled: prompt for a name first
+        {
+            std::string name;
+            if (platform::inputText("Project name", scene.projectName.c_str(), name))
+                setStatus(scene.saveAs(name) ? "Saved" : "Save failed");
+            else
+                setStatus("Cancelled");
+        }
+        else
+            setStatus(scene.save() ? "Saved" : "Save failed");
+    }
+    else if (op == FileOp::Load)
+    {
+        browser.open();
+        screen = AppScreen::Browser;
+    }
 }
 
 void Editor::deleteSelected()
@@ -283,6 +309,8 @@ void Editor::syncZoom(float cameraDistance)
 
 void Editor::handleKeys(u32 kDown)
 {
+    if (screen == AppScreen::Browser)
+        return;
     if (kDown & KEY_X)
         wireframe = !wireframe;
     if (kDown & KEY_Y)
@@ -306,6 +334,7 @@ void Editor::applyFlip()
 
 void Editor::handleTouchDown(int px, int py)
 {
+    if (screen == AppScreen::Browser) { browser.handleTouchDown(px, py); return; }
     touching = true;
     pressInViewport = false;
     pressPx = px;
@@ -362,9 +391,9 @@ void Editor::handleTouchDown(int px, int py)
             if (fileMenu[i].contains(px, py))
             {
                 if (i == 0)
-                    setStatus(scene.save() ? "Saved" : "Save failed");
+                    pendingFileOp = FileOp::Save;
                 else if (i == 1)
-                    setStatus(scene.load() ? "Loaded" : "No save found");
+                    pendingFileOp = FileOp::Load;
                 else
                     wantQuit = true;
                 fileMenuOpen = false;
@@ -833,6 +862,7 @@ void Editor::applySubDrag(const Viewport& vp, float wx, float wy)
 
 void Editor::handleTouchMove(int px, int py)
 {
+    if (screen == AppScreen::Browser) { browser.handleTouchMove(px, py); return; }
     if (!touching)
         return;
 
@@ -913,6 +943,7 @@ void Editor::handleTouchMove(int px, int py)
 
 void Editor::handleTouchUp(int px, int py)
 {
+    if (screen == AppScreen::Browser) { browser.handleTouchUp(px, py); return; }
     (void)px;
     (void)py;
     if (!touching)

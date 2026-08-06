@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 #include "mesh.h"
 
 // top-level editing mode (bottom-left popup)
@@ -41,6 +42,14 @@ struct FaceRef
 struct EdgeRef
 {
     int obj, v0, v1; // an unordered vertex pair
+};
+
+// one saved project on the SD card, as shown in the browser
+struct ProjectInfo
+{
+    std::string path; // full sdmc path to the .whittle file
+    std::string name; // display name from the file header
+    long mtime;       // last-modified time, for sorting
 };
 
 // the document: objects, selection, undo/redo history, and SD save/load. no
@@ -89,10 +98,24 @@ struct Scene
     bool isFaceSelected(int obj, int face) const;
     Vec3 selectionCentroid() const;
 
-    bool save() const;
-    bool load();
+    // current project identity. empty path = untitled (never saved).
+    std::string projectName;
+    std::string projectPath;
+    bool dirty = false; // unsaved changes since the last save/load
+
+    bool save();                          // overwrite projectPath; false if untitled
+    bool saveAs(const std::string& name); // slug a new file under the projects dir
+    bool load(const std::string& path);   // load a specific project file
+    bool loadNewest();                    // load the most-recently-saved project
+    std::vector<ProjectInfo> listProjects() const;
+    // read a project's geometry only, without touching this scene (browser preview)
+    bool peekMeshes(const std::string& path, std::vector<Mesh>& out) const;
+    bool deleteProject(const std::string& path); // remove the file
+    void newProject();                           // reset to a fresh untitled scene
 
 private:
+    bool writeTo(const char* path);  // serialize to a file
+    bool readFrom(const char* path); // deserialize from a file
     static constexpr int kMaxUndo = 32;
     struct State
     {

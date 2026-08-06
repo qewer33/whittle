@@ -4,6 +4,7 @@
 #include "scene.h"
 #include "rect.h"
 #include "textureeditor.h"
+#include "projectbrowser.h"
 #include "palette.h"
 #include "renderer.h"
 #include "viewport.h"
@@ -28,6 +29,15 @@ enum class Workspace
 {
     ThreeD,
     TwoD,
+};
+
+// deferred file-menu action, run by main between frames (save prompts the
+// keyboard, a system applet that can't run mid-render)
+enum class FileOp
+{
+    None,
+    Save,
+    Load,
 };
 
 // interaction layer over a Scene: input, picking, transforms, toolbar, popups.
@@ -84,6 +94,10 @@ struct Editor
 
     // texture workspace interaction (canvas, pixel tools, UV editing)
     TextureEditor tex{scene, paintColor};
+
+    // top-level screen: the editor, or the full-screen project browser
+    AppScreen screen = AppScreen::Editor;
+    ProjectBrowser browser{scene, screen};
 
     bool wireframe = true; // wireframe overlay on the preview
     bool showFaces = true; // filled faces in the ortho views
@@ -154,6 +168,10 @@ struct Editor
     void handleTouchDown(int px, int py);
     void handleTouchMove(int px, int py);
     void handleTouchUp(int px, int py);
+
+    // pending file-menu action; serviceFileOps runs it (call between frames)
+    FileOp pendingFileOp = FileOp::None;
+    void serviceFileOps();
 
     // tie the ortho scale to the preview's camera distance (single zoom)
     void syncZoom(float cameraDistance);

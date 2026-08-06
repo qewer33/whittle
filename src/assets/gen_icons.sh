@@ -46,6 +46,7 @@ icons=(
   "33_minimize:minimize"
   "34_eraser:eraser"
   "35_more:ellipsis-vertical"
+  "36_back:arrow-left"
 )
 
 tmp="$(mktemp -d)"

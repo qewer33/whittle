@@ -41,6 +41,7 @@ enum Icon
     Icon_Minimize,
     Icon_Eraser,
     Icon_More,
+    Icon_Back,
     Icon_Count,
 };
 

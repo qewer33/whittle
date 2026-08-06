@@ -2,11 +2,41 @@
 #include <algorithm>
 #include <array>
 #include <stdio.h>
+#include <string.h>
+#include <time.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
-// scene save file on the SD card
-static const char* const kSavePath = "sdmc:/m1model.dat";
+// projects live under this dir on the SD card, one .whittle file each
+static const char* const kAppDir = "sdmc:/whittle";
+static const char* const kProjectsDir = "sdmc:/whittle/projects";
+static const char* const kProjectExt = ".whittle";
 static const u32 kSaveMagic = 0x314D444D; // "MDM1"
-static const u32 kSaveVersion = 3;
+static const u32 kSaveVersion = 4;        // v4 adds a name + timestamp header
+
+static void ensureDirs()
+{
+    mkdir(kAppDir, 0777);
+    mkdir(kProjectsDir, 0777);
+}
+
+// display name to a safe FAT filename stem: keep alnum/dash/underscore, spaces
+// become dashes, everything else dropped. empty falls back to "untitled".
+static std::string slug(const std::string& name)
+{
+    std::string s;
+    for (char c : name)
+    {
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+            c == '-' || c == '_')
+            s += c;
+        else if (c == ' ')
+            s += '-';
+    }
+    if (s.empty())
+        s = "untitled";
+    return s;
+}
 
 Scene::Scene()
 {
@@ -30,6 +60,7 @@ void Scene::snapshot()
     if ((int)undoStack.size() > kMaxUndo)
         undoStack.erase(undoStack.begin());
     redoStack.clear(); // a new edit kills the redo history
+    dirty = true;
 }
 
 void Scene::undo()
@@ -41,6 +72,7 @@ void Scene::undo()
     texture = undoStack.back().texture;
     undoStack.pop_back();
     textureDirty = true;
+    dirty = true;
     clearSelection();
     clampActive();
 }
@@ -54,6 +86,7 @@ void Scene::redo()
     texture = redoStack.back().texture;
     redoStack.pop_back();
     textureDirty = true;
+    dirty = true;
     clearSelection();
     clampActive();
 }
@@ -552,13 +585,43 @@ void Scene::extrudeSelectedFaces()
     }
 }
 
-bool Scene::save() const
+// read just the v4 header display name (used by the browser listing)
+static std::string readHeaderName(const char* path)
 {
-    FILE* f = fopen(kSavePath, "wb");
+    std::string name;
+    FILE* f = fopen(path, "rb");
+    if (!f)
+        return name;
+    u32 magic = 0, version = 0;
+    if (fread(&magic, 4, 1, f) == 1 && magic == kSaveMagic &&
+        fread(&version, 4, 1, f) == 1 && version >= 4)
+    {
+        u16 len = 0;
+        if (fread(&len, 2, 1, f) == 1 && len > 0 && len < 1024)
+        {
+            name.resize(len);
+            if (fread(&name[0], 1, len, f) != len)
+                name.clear();
+        }
+    }
+    fclose(f);
+    return name;
+}
+
+bool Scene::writeTo(const char* path)
+{
+    FILE* f = fopen(path, "wb");
     if (!f)
         return false;
     fwrite(&kSaveMagic, sizeof(u32), 1, f);
     fwrite(&kSaveVersion, sizeof(u32), 1, f);
+    // v4 header: display name + save timestamp
+    const u16 nameLen = (u16)projectName.size();
+    fwrite(&nameLen, sizeof(u16), 1, f);
+    if (nameLen)
+        fwrite(projectName.data(), 1, nameLen, f);
+    const u64 ts = (u64)time(nullptr);
+    fwrite(&ts, sizeof(u64), 1, f);
     const u32 nobj = (u32)objects.size();
     fwrite(&nobj, sizeof(u32), 1, f);
     for (const Mesh& m : objects)
@@ -584,22 +647,52 @@ bool Scene::save() const
     return true;
 }
 
-bool Scene::load()
+// parse a project file into plain containers, no Scene state touched. shared by
+// readFrom (real load) and peekMeshes (browser preview).
+static bool parseFile(const char* path, std::vector<Mesh>& objs, std::vector<u32>& tex,
+                      bool& hasTex, std::string& name)
 {
-    FILE* f = fopen(kSavePath, "rb");
+    hasTex = false;
+    FILE* f = fopen(path, "rb");
     if (!f)
         return false;
     u32 magic = 0, version = 0, nobj = 0;
     if (fread(&magic, sizeof(u32), 1, f) != 1 || magic != kSaveMagic ||
-        fread(&version, sizeof(u32), 1, f) != 1 || version < 1 || version > kSaveVersion ||
-        fread(&nobj, sizeof(u32), 1, f) != 1)
+        fread(&version, sizeof(u32), 1, f) != 1 || version < 1 || version > kSaveVersion)
     {
         fclose(f);
         return false;
     }
 
-    std::vector<Mesh> loaded;
-    loaded.reserve(nobj);
+    if (version >= 4)
+    {
+        u16 nameLen = 0;
+        if (fread(&nameLen, sizeof(u16), 1, f) != 1)
+        {
+            fclose(f);
+            return false;
+        }
+        name.resize(nameLen);
+        if (nameLen && fread(&name[0], 1, nameLen, f) != nameLen)
+        {
+            fclose(f);
+            return false;
+        }
+        u64 ts = 0;
+        if (fread(&ts, sizeof(u64), 1, f) != 1)
+        {
+            fclose(f);
+            return false;
+        }
+    }
+    if (fread(&nobj, sizeof(u32), 1, f) != 1)
+    {
+        fclose(f);
+        return false;
+    }
+
+    objs.clear();
+    objs.reserve(nobj);
     for (u32 o = 0; o < nobj; o++)
     {
         Mesh m;
@@ -641,27 +734,164 @@ bool Scene::load()
             }
             m.faces.push_back(fa);
         }
-        loaded.push_back(std::move(m));
+        objs.push_back(std::move(m));
     }
 
-    std::vector<u32> loadedTex;
     if (version >= 3)
     {
-        loadedTex.resize(kTexSize * kTexSize);
-        if (fread(loadedTex.data(), sizeof(u32), loadedTex.size(), f) != loadedTex.size())
+        tex.resize(Scene::kTexSize * Scene::kTexSize);
+        if (fread(tex.data(), sizeof(u32), tex.size(), f) != tex.size())
         {
             fclose(f);
             return false;
         }
+        hasTex = true;
     }
     fclose(f);
+    return true;
+}
+
+bool Scene::readFrom(const char* path)
+{
+    std::vector<Mesh> objs;
+    std::vector<u32> tex;
+    bool hasTex = false;
+    std::string name;
+    if (!parseFile(path, objs, tex, hasTex, name))
+        return false;
 
     snapshot(); // load is undoable
-    objects = std::move(loaded);
-    if (!loadedTex.empty())
-        texture = std::move(loadedTex);
+    objects = std::move(objs);
+    if (hasTex)
+        texture = std::move(tex);
     textureDirty = true;
     clearSelection();
     activeObject = 0;
+    projectName = name; // empty for pre-v4 files
     return true;
+}
+
+bool Scene::peekMeshes(const std::string& path, std::vector<Mesh>& out) const
+{
+    std::vector<u32> tex;
+    bool hasTex = false;
+    std::string name;
+    return parseFile(path.c_str(), out, tex, hasTex, name);
+}
+
+bool Scene::save()
+{
+    if (projectPath.empty())
+        return false; // untitled: the caller prompts for a name, then saveAs
+    ensureDirs();
+    if (!writeTo(projectPath.c_str()))
+        return false;
+    dirty = false;
+    return true;
+}
+
+bool Scene::saveAs(const std::string& name)
+{
+    ensureDirs();
+    const std::string stem = slug(name);
+    std::string path;
+    for (int n = 1;; n++) // pick a free filename: stem, stem-2, stem-3, ...
+    {
+        path = std::string(kProjectsDir) + "/" + stem;
+        if (n > 1)
+            path += "-" + std::to_string(n);
+        path += kProjectExt;
+        struct stat st;
+        if (stat(path.c_str(), &st) != 0)
+            break;
+    }
+    projectName = name;
+    if (!writeTo(path.c_str()))
+        return false;
+    projectPath = path;
+    dirty = false;
+    return true;
+}
+
+bool Scene::load(const std::string& path)
+{
+    if (!readFrom(path.c_str()))
+        return false;
+    projectPath = path;
+    if (projectName.empty())
+    {
+        // fall back to the filename stem as the display name
+        const size_t slash = path.find_last_of('/');
+        std::string base = slash == std::string::npos ? path : path.substr(slash + 1);
+        const size_t dot = base.rfind(kProjectExt);
+        projectName = dot != std::string::npos ? base.substr(0, dot) : base;
+    }
+    dirty = false;
+    return true;
+}
+
+bool Scene::loadNewest()
+{
+    std::vector<ProjectInfo> projs = listProjects();
+    if (projs.empty())
+        return false;
+    const ProjectInfo* best = &projs[0];
+    for (const ProjectInfo& p : projs)
+        if (p.mtime > best->mtime)
+            best = &p;
+    return load(best->path);
+}
+
+std::vector<ProjectInfo> Scene::listProjects() const
+{
+    std::vector<ProjectInfo> out;
+    DIR* d = opendir(kProjectsDir);
+    if (!d)
+        return out;
+    const size_t extLen = strlen(kProjectExt);
+    struct dirent* e;
+    while ((e = readdir(d)) != nullptr)
+    {
+        const std::string fn = e->d_name;
+        if (fn.size() <= extLen || fn.compare(fn.size() - extLen, extLen, kProjectExt) != 0)
+            continue;
+        ProjectInfo info;
+        info.path = std::string(kProjectsDir) + "/" + fn;
+        struct stat st;
+        info.mtime = stat(info.path.c_str(), &st) == 0 ? (long)st.st_mtime : 0;
+        info.name = readHeaderName(info.path.c_str());
+        if (info.name.empty())
+            info.name = fn.substr(0, fn.size() - extLen);
+        out.push_back(std::move(info));
+    }
+    closedir(d);
+    return out;
+}
+
+bool Scene::deleteProject(const std::string& path)
+{
+    if (remove(path.c_str()) != 0)
+        return false;
+    if (path == projectPath) // deleted the open project: revert to untitled, keep the model
+    {
+        projectName.clear();
+        projectPath.clear();
+    }
+    return true;
+}
+
+void Scene::newProject()
+{
+    snapshot(); // undoable
+    objects.clear();
+    objects.push_back(makeCube(1.0f));
+    for (int y = 0; y < kTexSize; y++)
+        for (int x = 0; x < kTexSize; x++)
+            texture[y * kTexSize + x] = (((x >> 4) + (y >> 4)) & 1) ? 0xef7d57FF : 0x257179FF;
+    textureDirty = true;
+    clearSelection();
+    activeObject = 0;
+    projectName.clear();
+    projectPath.clear();
+    dirty = false;
 }

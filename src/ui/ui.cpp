@@ -3,6 +3,7 @@
 #include "palette.h"
 #include <citro2d.h>
 #include <cstdio>
+#include <string>
 
 static const u32 kBarBg = 0x1B1E26FF;     // toolbar background
 static const u32 kActiveBg = 0x4E7BCCFF;   // active/open button background
@@ -47,6 +48,7 @@ namespace
     C2D_TextBuf textBuf = nullptr;
     C2D_TextBuf toastBuf = nullptr; // reparsed each frame for the toast
     C2D_TextBuf brushBuf = nullptr; // reparsed each frame for the brush-size number
+    C2D_TextBuf topBuf = nullptr;   // reparsed each frame for the top-screen project name
     C2D_Text modeLabels[Editor::kNumModes];
     float modeLabelH[Editor::kNumModes] = {0};
     C2D_Text shapeLabels[Editor::kNumShapes];
@@ -63,6 +65,11 @@ namespace
     C2D_Text axisText[3];
     C2D_Text texActionLabels[Editor::kNumTexActions];
     float texActionLabelH[Editor::kNumTexActions] = {0};
+    // project browser: Projects, Back, New, Delete, Open, Cancel
+    const char* const kBrowserLabels[6] = {"Projects", "Back", "New", "Delete", "Open", "Cancel"};
+    C2D_Text browserLabels[6];
+    float browserLabelH[6] = {0};
+    C2D_TextBuf browserBuf = nullptr; // reparsed each frame for project names
 
     inline u32 conv(u32 rgba)
     {
@@ -143,6 +150,100 @@ namespace
             textLeft(&txt[i], txtH[i], r.x + 5 + kIcon + 4, r.y, r.h);
         }
     }
+
+    // a button with centered text; dimmed when disabled, filled when active
+    void textBtn(const Rect& r, C2D_Text* t, float th, bool enabled, bool active = false)
+    {
+        C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(active ? kActiveBg : kItemBg));
+        outline(r.x, r.y, r.w, r.h, kBorderCol);
+        float tw, hh;
+        C2D_TextGetDimensions(t, kTextScale, kTextScale, &tw, &hh);
+        C2D_DrawText(t, C2D_WithColor, r.x + (r.w - tw) / 2.0f, r.y + (r.h - th) / 2.0f + 1.0f, 0.0f,
+                     kTextScale, kTextScale, conv(enabled ? kTextCol : kIconDim));
+    }
+
+    // a button with an icon + label, the pair centered; dimmed when disabled
+    void iconTextBtn(const Rect& r, Icon ic, C2D_Text* t, float th, bool enabled)
+    {
+        C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(kItemBg));
+        outline(r.x, r.y, r.w, r.h, kBorderCol);
+        float tw, hh;
+        C2D_TextGetDimensions(t, kTextScale, kTextScale, &tw, &hh);
+        float sx = r.x + (r.w - (kIcon + 4 + tw)) / 2.0f;
+        if (sx < r.x + 3)
+            sx = r.x + 3;
+        icons::draw(ic, sx, r.y + (r.h - kIcon) / 2.0f, kIcon, enabled ? kIconIdle : kIconDim);
+        C2D_DrawText(t, C2D_WithColor, sx + kIcon + 4, r.y + (r.h - th) / 2.0f + 1.0f, 0.0f,
+                     kTextScale, kTextScale, conv(enabled ? kTextCol : kIconDim));
+    }
+
+    // parse a transient string into browserBuf and draw it (buffer is cleared
+    // once per browser frame, so all its texts stay valid until the flush)
+    void browserText(const char* s, float x, float y, u32 col)
+    {
+        C2D_Text t;
+        C2D_TextParse(&t, browserBuf, s);
+        C2D_TextOptimize(&t);
+        C2D_DrawText(&t, C2D_WithColor, x, y, 0.0f, kTextScale, kTextScale, conv(col));
+    }
+
+    void drawBrowser(Editor& editor)
+    {
+        ProjectBrowser& b = editor.browser;
+        C2D_TextBufClear(browserBuf);
+        C2D_DrawRectSolid(0, 0, 0.0f, 320, 240, conv(kPanelBg));
+
+        // rows (header/footer are drawn after, to cover any overflow)
+        for (int i = 0; i < (int)b.entries.size(); i++)
+        {
+            const Rect r = b.rowRect(i);
+            if (r.y + r.h <= ProjectBrowser::kListTop || r.y >= ProjectBrowser::kListBottom)
+                continue;
+            const bool sel = i == b.selected;
+            if (sel)
+                C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(kActiveBg));
+            browserText(b.entries[i].name.c_str(), r.x + 10, r.y + (r.h - browserLabelH[0]) / 2.0f + 1.0f,
+                        sel ? kIconActive : kTextCol);
+            C2D_DrawRectSolid(r.x, r.y + r.h - 1, 0.0f, r.w, 1, conv(kBarBg));
+        }
+
+        if (b.entries.empty())
+            browserText("No projects", 132.0f, 108.0f, kIconDim);
+
+        // header
+        C2D_DrawRectSolid(0, 0, 0.0f, 320, ProjectBrowser::kHeaderH, conv(kBarBg));
+        icons::draw(Icon_Load, 8, (ProjectBrowser::kHeaderH - kIcon) / 2.0f, kIcon, kIconIdle);
+        textLeft(&browserLabels[0], browserLabelH[0], 8 + kIcon + 4, 0, ProjectBrowser::kHeaderH);
+        iconTextBtn(b.btnBack(), Icon_Back, &browserLabels[1], browserLabelH[1], true);
+
+        // footer actions
+        const int fy = 240 - ProjectBrowser::kFooterH;
+        C2D_DrawRectSolid(0, fy, 0.0f, 320, ProjectBrowser::kFooterH, conv(kBarBg));
+        const bool hasSel = b.selected >= 0;
+        iconTextBtn(b.btnNew(), Icon_Plus, &browserLabels[2], browserLabelH[2], true);
+        iconTextBtn(b.btnDelete(), Icon_Trash, &browserLabels[3], browserLabelH[3], hasSel);
+        iconTextBtn(b.btnOpen(), Icon_Load, &browserLabels[4], browserLabelH[4], hasSel);
+
+        // delete confirmation
+        if (b.confirmingDelete)
+        {
+            C2D_DrawRectSolid(0, 0, 0.0f, 320, 240, conv(0x00000099));
+            const Rect box = b.confirmBox();
+            C2D_DrawRectSolid(box.x, box.y, 0.0f, box.w, box.h, conv(kPanelBg));
+            outline(box.x, box.y, box.w, box.h, kBorderCol);
+            const std::string name = hasSel ? b.entries[b.selected].name : std::string();
+            const std::string msg = "Delete " + name + "?";
+            C2D_Text t;
+            C2D_TextParse(&t, browserBuf, msg.c_str());
+            C2D_TextOptimize(&t);
+            float tw, th;
+            C2D_TextGetDimensions(&t, kTextScale, kTextScale, &tw, &th);
+            C2D_DrawText(&t, C2D_WithColor, box.x + (box.w - tw) / 2.0f, box.y + 12.0f, 0.0f,
+                         kTextScale, kTextScale, conv(kTextCol));
+            textBtn(b.confirmCancel(), &browserLabels[5], browserLabelH[5], true);
+            textBtn(b.confirmOk(), &browserLabels[3], browserLabelH[3], true, true);
+        }
+    }
 }
 
 namespace ui
@@ -152,6 +253,8 @@ namespace ui
         textBuf = C2D_TextBufNew(512);
         toastBuf = C2D_TextBufNew(64);
         brushBuf = C2D_TextBufNew(16);
+        browserBuf = C2D_TextBufNew(1024);
+        topBuf = C2D_TextBufNew(64);
         parseAll(modeLabels, modeLabelH, kModeLabels, Editor::kNumModes);
         parseAll(shapeLabels, shapeLabelH, kShapeLabels, Editor::kNumShapes);
         parseAll(fileLabels, fileLabelH, kFileLabels, Editor::kNumMenu);
@@ -164,6 +267,7 @@ namespace ui
             C2D_TextOptimize(&axisText[i]);
         }
         parseAll(texActionLabels, texActionLabelH, kTexActionLabels, Editor::kNumTexActions);
+        parseAll(browserLabels, browserLabelH, kBrowserLabels, 6);
     }
 
     void exit()
@@ -174,15 +278,27 @@ namespace ui
             C2D_TextBufDelete(toastBuf);
         if (brushBuf)
             C2D_TextBufDelete(brushBuf);
+        if (browserBuf)
+            C2D_TextBufDelete(browserBuf);
+        if (topBuf)
+            C2D_TextBufDelete(topBuf);
         textBuf = nullptr;
         toastBuf = nullptr;
         brushBuf = nullptr;
+        browserBuf = nullptr;
+        topBuf = nullptr;
     }
 
     void draw(Editor& editor, C3D_Tex* texture)
     {
         // painter's order, so kill depth test
         C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
+
+        if (editor.screen == AppScreen::Browser)
+        {
+            drawBrowser(editor);
+            return;
+        }
 
         const int topH = editor.btnMenu.y + editor.btnMenu.h;
         const Rect& bm = editor.btnMode;
@@ -584,5 +700,28 @@ namespace ui
             C2D_DrawText(&nt, C2D_WithColor, p.x + (p.w - tw) / 2.0f, tr.y + tr.h + 6.0f, 0.0f,
                          kTextScale, kTextScale, conv(kTextCol));
         }
+    }
+
+    void drawTop(Editor& editor)
+    {
+        if (editor.screen != AppScreen::Editor)
+            return;
+        C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
+
+        const char* name = editor.scene.projectName.empty() ? "Unnamed Model"
+                                                            : editor.scene.projectName.c_str();
+        C2D_TextBufClear(topBuf);
+        C2D_Text t;
+        C2D_TextParse(&t, topBuf, name);
+        C2D_TextOptimize(&t);
+        const float sc = 0.43f;         // a couple px smaller than the toolbar text
+        const u32 nameCol = 0xA8AEBAFF; // grayer than the bright UI text
+        float tw, th;
+        C2D_TextGetDimensions(&t, sc, sc, &tw, &th);
+        const float x = 8.0f, y = 6.0f;
+        C2D_DrawText(&t, C2D_WithColor, x, y, 0.0f, sc, sc, conv(nameCol));
+        // unsaved-changes dot trailing the name
+        if (editor.scene.dirty)
+            C2D_DrawCircleSolid(x + tw + 6.0f, y + th / 2.0f, 0.0f, 2.0f, conv(0xF0A030FF));
     }
 }
