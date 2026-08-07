@@ -41,6 +41,14 @@ Below are a list of the modes in the 2D workspace with explanations:
 - **Paint**: The **Paint mode** provides a simple pixelart editor that allows you to edit the global 128x128 texture atlas. It provides 3 tools: **Brush**, **Bucket** and **Picker**.
 - **UV**: The **UV mode** allows you to edit the UV maps of textured faces.
 
+### Saving Models
+
+whittle allows you to *save and load* models you've created via the *Save* and *Load* actions in the hamburger menu. Clicking the *Save* menu item prompts up a "Project Name" keyboaord input the first time a file is saved, afterwards it will just override the save. Projects with unsaved changes will display an orange circle in the top left alongside the porject name while editing it. Clicking the *Load* menu item brings up a *Projects View* where you can view your previous projects, and *Open* or *Delete* them via the buttons.
+
+### Exporting Models
+
+whittle can currently export models in **Wavefront OBJ (.obj)** and **STL (.stl)** formats. OBJ files are exported together with material (.mtl) and texture (.tga) files. STL only contain the 3D model itself with no colors or textures as STL doesn't support them. **OBJ is recommended for importing into other 3D modelling software such as Blender** while **STL is recommended for 3D printing**. The exported files will be inside the `/whittle/exports/` folder in your SD card root directory.
+
 ## Development
 
 Written in C++ using devkitpro.
