@@ -87,6 +87,10 @@ Orthographic viewports are where the editing happens on the bottom screen. The *
 
 The top preview is rendered with a *Camera* (see `src/engine/camera.cpp`), it handles zoom/pan/orbit.
 
+#### STL & OBJ Export
+
+STL & OBJ export are handled by two pure functions that work over *Scene* (see `src/core/meshexport.cpp`). OBJ natively supports quad so the mesh representation of whittle maps 1:1 while STL only supports tris so the mesh is triangulated for export. STL doesn't support UVs or materials so only the geometry is exported. OBJ does support them, one material for each unique face color and one material for the texture atlas is exported as a `.mtl` file alongside the OBJ. The texture is also saved alongside as an uncompressed 32 bit TGA file (`.tga`).
+
 ### UI & Interaction Engine
 
 #### 3D & 2D Workspaces

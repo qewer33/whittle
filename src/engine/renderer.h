@@ -53,8 +53,7 @@ struct Renderer
 private:
     static constexpr int kBottomBufW = 240;
     static constexpr int kBottomBufH = 320;
-    static constexpr u32 kMaxSolidVerts = 16384;
-    static constexpr u32 kMaxWireVerts = 16384;
+    static constexpr u32 kInitVerts = 16384; // starting vbo size; grows to fit
 
     C3D_RenderTarget* topTarget_ = nullptr;
     C3D_RenderTarget* bottomTarget_ = nullptr;
@@ -66,10 +65,15 @@ private:
     C3D_Tex tex_; // shared model texture
     void* solidVbo = nullptr;
     void* wireVbo = nullptr;
+    u32 solidCap_ = 0, wireCap_ = 0; // current vbo capacities in verts
     // append cursors into the shared vbos: passes queue until endFrame(), so each
     // appends to fresh space. reset per frame. solid=preview+ortho, wire=lines.
     u32 solidVertOffset_ = 0;
     u32 wireVertOffset_ = 0;
+    // verts requested this frame (counts past capacity); drives the grow at the
+    // next frame boundary
+    u32 solidNeeded_ = 0;
+    u32 wireNeeded_ = 0;
 
     void drawSolid(const Mesh& mesh, bool shade);
     void drawFaceSubset(const Mesh& mesh, bool textured, GPU_CULLMODE cull,

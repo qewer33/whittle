@@ -73,8 +73,10 @@ bool Renderer::init()
     // must not re-apply the screen rotation
     Mtx_Ortho(&ndc, -1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, true);
 
-    solidVbo = linearAlloc(kMaxSolidVerts * kVertexSize);
-    wireVbo = linearAlloc(kMaxWireVerts * kVertexSize);
+    solidCap_ = kInitVerts;
+    wireCap_ = kInitVerts;
+    solidVbo = linearAlloc(solidCap_ * kVertexSize);
+    wireVbo = linearAlloc(wireCap_ * kVertexSize);
     if (!solidVbo || !wireVbo)
         return false;
 
@@ -114,12 +116,35 @@ void Renderer::exit()
         C3D_RenderTargetDelete(bottomTarget_);
 }
 
+// grow a linear vbo to fit `needed` verts (double until it fits). on alloc
+// failure the buffer is left unchanged. only call between frames (gpu idle).
+static void growVbo(void** vbo, u32& cap, u32 needed)
+{
+    if (needed <= cap)
+        return;
+    u32 newCap = cap;
+    while (newCap < needed)
+        newCap *= 2;
+    void* nb = linearAlloc(newCap * kVertexSize);
+    if (!nb)
+        return;
+    linearFree(*vbo);
+    *vbo = nb;
+    cap = newCap;
+}
+
 void Renderer::beginFrame()
 {
+    // resize to last frame's request while the gpu is idle between frames
+    growVbo(&solidVbo, solidCap_, solidNeeded_);
+    growVbo(&wireVbo, wireCap_, wireNeeded_);
+
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     // draws are queued until endFrame(), so rewind the shared vbos each frame
     solidVertOffset_ = 0;
     wireVertOffset_ = 0;
+    solidNeeded_ = 0;
+    wireNeeded_ = 0;
 }
 
 void Renderer::drawOn(C3D_RenderTarget* target)
@@ -228,8 +253,9 @@ void Renderer::drawFaceSubset(const Mesh& mesh, bool textured, GPU_CULLMODE cull
     {
         if (face.textured != textured)
             continue;
-        if (base + vertCount + 6 > kMaxSolidVerts)
-            break;
+        solidNeeded_ += 6;
+        if (base + vertCount + 6 > solidCap_) // out of room: keep counting need
+            continue;
 
         float col[4];
         colorToFloats(face.color, col);
@@ -326,8 +352,9 @@ void Renderer::drawLineSet(const Line* lines, int count, const C3D_Mtx& mvp,
     };
 
     const float halfW = 1.0f; // 2px total width
+    wireNeeded_ += (u32)count * 6;
     // clamp to room left in the shared vbo this frame
-    const u32 roomQuads = (kMaxWireVerts - wireVertOffset_) / 6;
+    const u32 roomQuads = (wireCap_ - wireVertOffset_) / 6;
     if (count > (int)roomQuads)
         count = (int)roomQuads;
     if (count <= 0)
