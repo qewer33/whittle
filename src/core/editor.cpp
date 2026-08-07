@@ -48,7 +48,7 @@ static bool pointInTri(float px, float py, float ax, float ay, float bx,
 Editor::Editor()
 {
     // two bars top and bottom, viewports fill the width between them
-    const int TB = 22, BB = 22;
+    const int TB = 20, BB = 20;
     const int vh = (240 - TB - BB) / 2;
     const float scale = 25.0f;
     viewports[0] = {0, TB, 320, vh, 0, 2, 0.0f, 0.0f, scale, false};       // top: X right, Z up
@@ -175,12 +175,12 @@ void Editor::toggleMax(int i)
         viewports[maxView].h = baseView[maxView].h;
     }
     maxView = wasMax ? -1 : i;
-    if (maxView >= 0) // fill the area between the two 22px bars
+    if (maxView >= 0) // fill the area between the two 20px bars
     {
         viewports[maxView].x = 0;
-        viewports[maxView].y = 22;
+        viewports[maxView].y = 20;
         viewports[maxView].w = 320;
-        viewports[maxView].h = 240 - 44;
+        viewports[maxView].h = 240 - 40;
     }
 }
 

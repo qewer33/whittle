@@ -14,7 +14,7 @@ struct Rect
 // hit-test so they agree.
 inline Rect segCell(int i, int count)
 {
-    constexpr int segW = 44, segPad = 3, barY = 240 - 22, barH = 22;
+    constexpr int segW = 44, segPad = 3, barY = 240 - 20, barH = 20;
     const int x0 = 160 - count * segW / 2;
     return {x0 + i * segW, barY + segPad, segW, barH - 2 * segPad};
 }

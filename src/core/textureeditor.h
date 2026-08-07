@@ -4,6 +4,7 @@
 #include "rect.h"
 #include "scene.h"
 #include "widgets/menu.h"
+#include "widgets/button.h"
 
 // pixel-editing tool in the texture workspace
 enum class TexTool
@@ -43,10 +44,10 @@ struct TextureEditor
     TexTool texTool = TexTool::Brush;
     int brushSize = 1;
 
-    widgets::Menu texModeMenu;      // paint/uv switch popup (bottom bar, left)
-    Rect btnTexMode;                // bottom bar, left
-    Rect btnBrushSize;              // bottom bar, right (paint, tools are segCell)
-    Rect btnAutoLayout, btnUvReset; // bottom bar, right (uv)
+    widgets::Menu texModeMenu;                // paint/uv switch popup (bottom bar, left)
+    widgets::Button btnTexMode;               // bottom bar, left
+    widgets::Button btnBrushSize;             // bottom bar, right (paint, tools are segCell)
+    widgets::Button btnAutoLayout, btnUvReset; // bottom bar, right (uv)
 
     // brush-size popup: a vertical slider with the size in px below it. right-
     // anchored above the brush-size button so it clears the color button.

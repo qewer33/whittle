@@ -22,7 +22,7 @@ static bool pointInTri(float px, float py, float ax, float ay, float bx,
 
 void TextureEditor::layout()
 {
-    const int TB = 22, BB = 22, bw = 30;
+    const int TB = 20, BB = 20, bw = 30;
     const int by = 240 - BB;
     btnTexMode = {0, by, 84, BB};
     // paint: brush/fill/eyedropper are the centered segmented switch (segCell),
@@ -41,7 +41,7 @@ void TextureEditor::layout()
 
 void TextureEditor::fitCanvas()
 {
-    const int TB = 22, BB = 22;
+    const int TB = 20, BB = 20;
     const float area = (float)(240 - BB - TB);
     canvasScale = area / Scene::kTexSize;
     canvasX = (320 - Scene::kTexSize * canvasScale) / 2.0f;

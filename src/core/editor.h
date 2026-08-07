@@ -9,6 +9,7 @@
 #include "renderer.h"
 #include "viewport.h"
 #include "widgets/menu.h"
+#include "widgets/button.h"
 
 // Paint-mode tool (segmented switch)
 enum class PaintTool
@@ -139,14 +140,14 @@ struct Editor
     }
     void toggleMax(int i);
 
-    // toolbar hit rects, set in the ctor
-    Rect btnMenu, btnAdd, btnDel, btnUndo, btnRedo; // top bar
-    Rect btnView, btnWorkspace;                     // top bar, right
-    Rect btnMode;                                   // bottom bar, left (model)
-    Rect btnExtrude, btnSubdivide;                  // bottom bar, right (edit/face)
-    Rect btnSplit;                                  // bottom bar, right (edit/edge)
-    Rect btnColor;                                  // bottom bar, right (paint contexts)
-    Rect btnTexMenu;                                // bottom bar, right (texture mode overflow)
+    // toolbar buttons, laid out in the ctor
+    widgets::Button btnMenu, btnAdd, btnDel, btnUndo, btnRedo; // top bar
+    widgets::Button btnView, btnWorkspace;                     // top bar, right
+    widgets::Button btnMode;                                   // bottom bar, left (model)
+    widgets::Button btnExtrude, btnSubdivide;                  // bottom bar, right (edit/face)
+    widgets::Button btnSplit;                                  // bottom bar, right (edit/edge)
+    widgets::Button btnColor;                                  // bottom bar, right (paint contexts)
+    widgets::Button btnTexMenu;                                // bottom bar, right (texture overflow)
 
     bool hasUndo() const { return scene.hasUndo(); }
     bool hasRedo() const { return scene.hasRedo(); }

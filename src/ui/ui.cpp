@@ -56,15 +56,6 @@ namespace
         }
     }
 
-    // icon centered in a button, active fills the bg, disabled dims the icon
-    void iconBtn(const Rect& b, Icon ic, bool active, bool enabled = true)
-    {
-        if (active)
-            C2D_DrawRectSolid(b.x, b.y, 0.0f, b.w, b.h, conv(kActiveBg));
-        const u32 col = !enabled ? kIconDim : (active ? kIconActive : kIconIdle);
-        icons::draw(ic, b.x + (b.w - kIcon) / 2.0f, b.y + (b.h - kIcon) / 2.0f, kIcon, col);
-    }
-
     // segmented switch: floating inset pill, cells centered in the bar
     void drawSegmented(const Icon* ics, int n, int active)
     {
@@ -315,38 +306,30 @@ namespace ui
 
         // top bar. left corner: 3D/2D workspace switch (labeled, shows current
         // workspace, tap flips). right corner: hamburger menu.
-        {
-            const Rect& b = editor.btnWorkspace;
-            const int wi = editor.is2D() ? 1 : 0;
-            icons::draw(wi ? Icon_Image : Icon_Box, b.x + 6,
-                        b.y + (b.h - kIcon) / 2.0f, kIcon, kIconIdle);
-            textLeft(&workspaceLabels[wi], workspaceLabelH[wi], b.x + 6 + kIcon + 4, b.y, b.h);
-        }
+        const int wi = editor.is2D() ? 1 : 0;
+        editor.btnWorkspace.drawLabeled(wi ? Icon_Image : Icon_Box, &workspaceLabels[wi],
+                                        workspaceLabelH[wi]);
         if (editor.is2D())
         {
-            iconBtn(editor.btnAdd, Icon_Fit, false);   // recenter/fit canvas
-            iconBtn(editor.btnDel, Icon_Trash, false); // clear sheet
+            editor.btnAdd.draw(Icon_Fit);   // recenter/fit canvas
+            editor.btnDel.draw(Icon_Trash); // clear sheet
         }
         else
         {
-            iconBtn(editor.btnAdd, Icon_Plus, editor.shapeMenu.open);
-            iconBtn(editor.btnDel, Icon_Trash, false);
+            editor.btnAdd.draw(Icon_Plus, editor.shapeMenu.open);
+            editor.btnDel.draw(Icon_Trash);
         }
-        iconBtn(editor.btnUndo, Icon_Undo, false, editor.hasUndo());
-        iconBtn(editor.btnRedo, Icon_Redo, false, editor.hasRedo());
+        editor.btnUndo.draw(Icon_Undo, false, editor.hasUndo());
+        editor.btnRedo.draw(Icon_Redo, false, editor.hasRedo());
         if (editor.is3D())
-            iconBtn(editor.btnView, Icon_Eye, editor.viewMenu.open);
-        iconBtn(editor.btnMenu, Icon_Menu, editor.fileMenu.open);
+            editor.btnView.draw(Icon_Eye, editor.viewMenu.open);
+        editor.btnMenu.draw(Icon_Menu, editor.fileMenu.open);
 
         // bottom bar: model controls (mode + sub-switch), or texture tools
         if (editor.is3D())
         {
-            if (editor.modeMenu.open)
-                C2D_DrawRectSolid(bm.x, bm.y, 0.0f, bm.w, bm.h, conv(kActiveBg));
-            const u32 modeCol = editor.modeMenu.open ? kIconActive : kIconIdle;
-            icons::draw(kModeIcons[modeIdx], bm.x + 5,
-                        bm.y + (bm.h - kIcon) / 2.0f, kIcon, modeCol);
-            textLeft(&modeLabels[modeIdx], modeLabelH[modeIdx], bm.x + 5 + kIcon + 4, bm.y, bm.h);
+            editor.btnMode.drawLabeled(kModeIcons[modeIdx], &modeLabels[modeIdx],
+                                       modeLabelH[modeIdx], editor.modeMenu.open);
 
             // segmented sub-switch for the current mode
             if (editor.mode == EditMode::Object)
@@ -362,24 +345,19 @@ namespace ui
             if (editor.mode == EditMode::Edit && editor.subLevel == SubLevel::Face)
             {
                 const bool hasFaces = !editor.scene.selectedFaces.empty();
-                iconBtn(editor.btnSubdivide, Icon_Subdivide, false, hasFaces);
-                iconBtn(editor.btnExtrude, Icon_Extrude, false, hasFaces);
+                editor.btnSubdivide.draw(Icon_Subdivide, false, hasFaces);
+                editor.btnExtrude.draw(Icon_Extrude, false, hasFaces);
             }
             // Edit/Edge verb button (right side)
             else if (editor.mode == EditMode::Edit && editor.subLevel == SubLevel::Edge)
-                iconBtn(editor.btnSplit, Icon_Split, false, !editor.scene.selectedEdges.empty());
+                editor.btnSplit.draw(Icon_Split, false, !editor.scene.selectedEdges.empty());
         }
         else
         {
             // mode button (icon + label), bottom-left
-            const Rect& tm = editor.tex.btnTexMode;
             const int texIdx = (int)editor.tex.texMode;
-            if (editor.tex.texModeMenu.open)
-                C2D_DrawRectSolid(tm.x, tm.y, 0.0f, tm.w, tm.h, conv(kActiveBg));
-            const u32 tmCol = editor.tex.texModeMenu.open ? kIconActive : kIconIdle;
-            icons::draw(kTexModeIcons[texIdx], tm.x + 5,
-                        tm.y + (tm.h - kIcon) / 2.0f, kIcon, tmCol);
-            textLeft(&texModeLabels[texIdx], texModeLabelH[texIdx], tm.x + 5 + kIcon + 4, tm.y, tm.h);
+            editor.tex.btnTexMode.drawLabeled(kTexModeIcons[texIdx], &texModeLabels[texIdx],
+                                              texModeLabelH[texIdx], editor.tex.texModeMenu.open);
 
             if (editor.tex.texMode == TexMode::Paint)
             {
@@ -399,8 +377,8 @@ namespace ui
             }
             else
             {
-                iconBtn(editor.tex.btnAutoLayout, Icon_Layout, false);
-                iconBtn(editor.tex.btnUvReset, Icon_Fit, false);
+                editor.tex.btnAutoLayout.draw(Icon_Layout);
+                editor.tex.btnUvReset.draw(Icon_Fit);
             }
         }
 
@@ -485,7 +463,7 @@ namespace ui
         }
         // texture-mode overflow menu button (texture all / untexture all)
         else if (editor.mode == EditMode::Texture && editor.is3D())
-            iconBtn(editor.btnTexMenu, Icon_More, editor.texActionMenu.open);
+            editor.btnTexMenu.draw(Icon_More, editor.texActionMenu.open);
 
         // toolbar popups on top: each widget draws itself when open (exportMenu
         // is a flyout, so file + export can both be open)
