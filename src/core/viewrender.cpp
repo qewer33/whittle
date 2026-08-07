@@ -151,7 +151,7 @@ static void pushSelectedFaces(const Viewport& vp, const Scene& scene, Renderer& 
 }
 
 // outward-normal arrow at each selected face centroid (the extrude direction).
-// the head spreads in the viewport plane; edge-on views collapse it to a dot.
+// the head spreads in the viewport plane, edge-on views collapse it to a dot.
 static void pushFaceNormalArrows(const Viewport& vp, const Scene& scene, Renderer& r)
 {
     const float shaft = 0.9f, head = 0.3f;

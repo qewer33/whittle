@@ -8,6 +8,7 @@
 #include "palette.h"
 #include "renderer.h"
 #include "viewport.h"
+#include "widgets/menu.h"
 
 // Paint-mode tool (segmented switch)
 enum class PaintTool
@@ -62,7 +63,7 @@ struct Editor
     PaintTool paintTool = PaintTool::Brush;            // Paint mode sub-switch
     FaceTexTool faceTexTool = FaceTexTool::Texture;    // Texture mode sub-switch
 
-    // Active workspace: 3D shows the ortho viewports; 2D shows the paint canvas.
+    // Active workspace: 3D shows the ortho viewports, 2D shows the paint canvas.
     Workspace workspace = Workspace::ThreeD;
     bool is3D() const { return workspace == Workspace::ThreeD; }
     bool is2D() const { return workspace == Workspace::TwoD; }
@@ -107,19 +108,15 @@ struct Editor
     bool flipViews = false; // view ortho projections from the far side
     bool shading = true;   // soft flat shading on the preview
 
-    // only one popup open at a time (texModeMenu lives in `tex`)
-    bool modeMenuOpen = false;
-    bool shapeMenuOpen = false;
-    bool fileMenuOpen = false;
-    bool viewMenuOpen = false;
-    bool texActionMenuOpen = false; // texture-mode overflow (texture/untexture all)
-    bool exportMenuOpen = false;    // export format submenu (obj/stl)
-    Rect modeMenu[kNumModes];
-    Rect shapeMenu[kNumShapes];
-    Rect fileMenu[kNumMenu];
-    Rect viewMenu[kNumView];
-    Rect texActionMenu[kNumTexActions];
-    Rect exportMenu[kNumExport];
+    // toolbar popups (each owns its layout/draw/hit-test). only one is open at a
+    // time, except exportMenu which flies out over an open fileMenu. the texture
+    // workspace's paint/uv menu lives in `tex`.
+    widgets::Menu modeMenu, shapeMenu, fileMenu, exportMenu, viewMenu, texActionMenu;
+    void closeMenus()
+    {
+        modeMenu.open = shapeMenu.open = fileMenu.open = exportMenu.open = viewMenu.open =
+            texActionMenu.open = false;
+    }
 
     bool wantQuit = false; // set by Exit, main loop breaks on it
 
@@ -174,7 +171,7 @@ struct Editor
     void handleTouchMove(int px, int py);
     void handleTouchUp(int px, int py);
 
-    // pending file-menu action; serviceFileOps runs it (call between frames)
+    // pending file-menu action, serviceFileOps runs it (call between frames)
     FileOp pendingFileOp = FileOp::None;
     void serviceFileOps();
 
@@ -218,7 +215,7 @@ private:
 
     // sub-object drag: moves selected verts, or the verts of selected edges/faces
     bool pressedSub = false;      // a sub-object was pressed (drag candidate)
-    bool grabSelection = false;   // extrude just ran; next viewport drag moves it
+    bool grabSelection = false;   // extrude just ran, next viewport drag moves it
     bool extruding = false;       // extrude operation active (shows normal arrows)
     bool draggingSub = false;
     int subDragViewport = -1;

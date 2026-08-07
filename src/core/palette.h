@@ -3,7 +3,7 @@
 #include <3ds.h>
 #include <math.h>
 
-// Sweetie 16 (GrafxKid, CC0). face colors are raw RGBA; these are just the
+// Sweetie 16 (GrafxKid, CC0). face colors are raw RGBA, these are just the
 // picker presets. stored as 0xRRGGBBAA.
 inline constexpr int kPaletteCount = 16;
 inline constexpr u32 kPalette[kPaletteCount] = {

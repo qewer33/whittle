@@ -1,51 +1,30 @@
 #include "ui.h"
 #include "icons.h"
 #include "palette.h"
+#include "uidraw.h"
 #include <citro2d.h>
 #include <cstdio>
 #include <string>
 
-static const u32 kBarBg = 0x1B1E26FF;     // toolbar background
-static const u32 kActiveBg = 0x4E7BCCFF;   // active/open button background
-static const u32 kItemBg = 0x333A4AFF;     // popup item background
-static const u32 kPanelBg = 0x272B36FF;    // popup panel background
-static const u32 kBorderCol = 0x66707EFF;
-static const u32 kIconIdle = 0xC2C8D4FF;   // normal icon
-static const u32 kIconActive = 0xFFFFFFFF; // icon on an active/open button
-static const u32 kIconDim = 0x565D6EFF;    // disabled icon (e.g. undo/redo)
-static const u32 kTextCol = 0xE8ECF4FF;
-
-static constexpr float kIcon = 14.0f;
+using namespace uidraw; // theme colors, conv, outline, textLeft, kIcon, kTextScale
 
 namespace
 {
+    // the migrated menu popups own their own labels/icons (set in the Editor),
+    // these are only for the buttons that still live in ui.cpp
     const char* const kModeLabels[Editor::kNumModes] = {
         "Object", "Edit", "Paint", "Texture"};
-    const char* const kShapeLabels[Editor::kNumShapes] = {
-        "Cube", "Sphere", "Pyramid", "Cylinder", "Plane"};
-    const char* const kFileLabels[Editor::kNumMenu] = {"Save", "Load", "Export", "Exit"};
     const char* const kTexModeLabels[TextureEditor::kNumTexModes] = {"Paint", "UV"};
-    const char* const kViewLabels[Editor::kNumView] = {"Wireframe", "Faces", "Flip", "Shading"};
     const char* const kWorkspaceLabels[2] = {"3D", "2D"}; // ThreeD, TwoD
-    const char* const kTexActionLabels[Editor::kNumTexActions] = {"Texture All", "Untexture All"};
-    // glyphs parallel to the label arrays
     const Icon kModeIcons[Editor::kNumModes] = {
         Icon_Box, Icon_Pencil, Icon_Paint, Icon_Texture};
-    const Icon kShapeIcons[Editor::kNumShapes] = {
-        Icon_Box, Icon_Circle, Icon_Pyramid, Icon_Cylinder, Icon_Square};
-    const Icon kFileIcons[Editor::kNumMenu] = {Icon_Save, Icon_Load, Icon_Export, Icon_Exit};
     const Icon kTexModeIcons[TextureEditor::kNumTexModes] = {Icon_Paint, Icon_Move};
-    const Icon kViewIcons[Editor::kNumView] = {Icon_Box, Icon_Square, Icon_Flip, Icon_Shade};
-    const Icon kTexActionIcons[Editor::kNumTexActions] = {Icon_Texture, Icon_Eraser};
-    const char* const kExportLabels[Editor::kNumExport] = {"OBJ", "STL"};
-    const Icon kExportIcons[Editor::kNumExport] = {Icon_Export, Icon_Export};
     // segmented sub-switch glyphs
     const Icon kTransformIcons[3] = {Icon_Move, Icon_Rotate, Icon_Scale};
     const Icon kSubLevelIcons[3] = {Icon_Vertex, Icon_Edge, Icon_Square};
     const Icon kTexToolIcons[3] = {Icon_Paint, Icon_Bucket, Icon_Pipette};
     const Icon kPaintIcons[2] = {Icon_Paint, Icon_Pipette};      // brush, eyedropper
     const Icon kFaceTexIcons[2] = {Icon_Texture, Icon_Eraser};   // texture, untexture
-    constexpr float kTextScale = 0.5f;
 
     C2D_TextBuf textBuf = nullptr;
     C2D_TextBuf toastBuf = nullptr; // reparsed each frame for the toast
@@ -53,42 +32,17 @@ namespace
     C2D_TextBuf topBuf = nullptr;   // reparsed each frame for the top-screen project name
     C2D_Text modeLabels[Editor::kNumModes];
     float modeLabelH[Editor::kNumModes] = {0};
-    C2D_Text shapeLabels[Editor::kNumShapes];
-    float shapeLabelH[Editor::kNumShapes] = {0};
-    C2D_Text fileLabels[Editor::kNumMenu];
-    float fileLabelH[Editor::kNumMenu] = {0};
     C2D_Text texModeLabels[TextureEditor::kNumTexModes];
     float texModeLabelH[TextureEditor::kNumTexModes] = {0};
-    C2D_Text viewLabels[Editor::kNumView];
-    float viewLabelH[Editor::kNumView] = {0};
     C2D_Text workspaceLabels[2];
     float workspaceLabelH[2] = {0};
     const char* const kAxisLabels[3] = {"X", "Y", "Z"};
     C2D_Text axisText[3];
-    C2D_Text texActionLabels[Editor::kNumTexActions];
-    float texActionLabelH[Editor::kNumTexActions] = {0};
-    C2D_Text exportLabels[Editor::kNumExport];
-    float exportLabelH[Editor::kNumExport] = {0};
     // project browser: Projects, Back, New, Delete, Open, Cancel
     const char* const kBrowserLabels[6] = {"Projects", "Back", "New", "Delete", "Open", "Cancel"};
     C2D_Text browserLabels[6];
     float browserLabelH[6] = {0};
     C2D_TextBuf browserBuf = nullptr; // reparsed each frame for project names
-
-    inline u32 conv(u32 rgba)
-    {
-        return C2D_Color32((rgba >> 24) & 0xFF, (rgba >> 16) & 0xFF,
-                           (rgba >> 8) & 0xFF, rgba & 0xFF);
-    }
-
-    void outline(int x, int y, int w, int h, u32 color)
-    {
-        const u32 c = conv(color);
-        C2D_DrawRectSolid(x, y, 0.0f, w, 1, c);
-        C2D_DrawRectSolid(x, y + h - 1, 0.0f, w, 1, c);
-        C2D_DrawRectSolid(x, y, 0.0f, 1, h, c);
-        C2D_DrawRectSolid(x + w - 1, y, 0.0f, 1, h, c);
-    }
 
     void parseAll(C2D_Text* txt, float* h, const char* const* names, int n)
     {
@@ -102,14 +56,7 @@ namespace
         }
     }
 
-    // left-aligned text, vertically centered in [y, y+h]
-    void textLeft(C2D_Text* t, float th, float x, float y, float h)
-    {
-        C2D_DrawText(t, C2D_WithColor, x, y + (h - th) / 2.0f, 0.0f,
-                     kTextScale, kTextScale, conv(kTextCol));
-    }
-
-    // icon centered in a button; active fills the bg, disabled dims the icon
+    // icon centered in a button, active fills the bg, disabled dims the icon
     void iconBtn(const Rect& b, Icon ic, bool active, bool enabled = true)
     {
         if (active)
@@ -132,28 +79,7 @@ namespace
         }
     }
 
-    void drawPopup(const Rect* rects, int count, const Icon* ics, C2D_Text* txt,
-                   const float* txtH, int highlight)
-    {
-        const Rect& first = rects[0];
-        const Rect& last = rects[count - 1];
-        const int panX = first.x - 2, panY = first.y - 2;
-        const int panW = first.w + 4, panH = (last.y + last.h) - first.y + 4;
-        C2D_DrawRectSolid(panX, panY, 0.0f, panW, panH, conv(kPanelBg));
-        outline(panX, panY, panW, panH, kBorderCol);
-        for (int i = 0; i < count; i++)
-        {
-            const Rect& r = rects[i];
-            const bool hi = (i == highlight);
-            C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(hi ? kActiveBg : kItemBg));
-            outline(r.x, r.y, r.w, r.h, kBorderCol);
-            icons::draw(ics[i], r.x + 5, r.y + (r.h - kIcon) / 2.0f, kIcon,
-                        hi ? kIconActive : kIconIdle);
-            textLeft(&txt[i], txtH[i], r.x + 5 + kIcon + 4, r.y, r.h);
-        }
-    }
-
-    // a button with centered text; dimmed when disabled, filled when active
+    // a button with centered text, dimmed when disabled, filled when active
     void textBtn(const Rect& r, C2D_Text* t, float th, bool enabled, bool active = false)
     {
         C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(active ? kActiveBg : kItemBg));
@@ -164,7 +90,7 @@ namespace
                      kTextScale, kTextScale, conv(enabled ? kTextCol : kIconDim));
     }
 
-    // a button with an icon + label, the pair centered; dimmed when disabled
+    // a button with an icon + label, the pair centered, dimmed when disabled
     void iconTextBtn(const Rect& r, Icon ic, C2D_Text* t, float th, bool enabled)
     {
         C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(kItemBg));
@@ -258,18 +184,13 @@ namespace ui
         browserBuf = C2D_TextBufNew(1024);
         topBuf = C2D_TextBufNew(64);
         parseAll(modeLabels, modeLabelH, kModeLabels, Editor::kNumModes);
-        parseAll(shapeLabels, shapeLabelH, kShapeLabels, Editor::kNumShapes);
-        parseAll(fileLabels, fileLabelH, kFileLabels, Editor::kNumMenu);
         parseAll(texModeLabels, texModeLabelH, kTexModeLabels, TextureEditor::kNumTexModes);
-        parseAll(viewLabels, viewLabelH, kViewLabels, Editor::kNumView);
         parseAll(workspaceLabels, workspaceLabelH, kWorkspaceLabels, 2);
         for (int i = 0; i < 3; i++)
         {
             C2D_TextParse(&axisText[i], textBuf, kAxisLabels[i]);
             C2D_TextOptimize(&axisText[i]);
         }
-        parseAll(texActionLabels, texActionLabelH, kTexActionLabels, Editor::kNumTexActions);
-        parseAll(exportLabels, exportLabelH, kExportLabels, Editor::kNumExport);
         parseAll(browserLabels, browserLabelH, kBrowserLabels, 6);
     }
 
@@ -342,7 +263,7 @@ namespace ui
                     C2D_DrawLine(x0, y0 + i * s, gc, x0 + texPx, y0 + i * s, gc, 1.0f, 0.05f);
             }
 
-            // UV overlay: all textured faces faint always; in uv mode the edit
+            // UV overlay: all textured faces faint always, in uv mode the edit
             // target is drawn bright with handles instead
             {
                 auto drawQuad = [&](const Face& f, u32 col, float thick, bool handles) {
@@ -363,7 +284,7 @@ namespace ui
                             C2D_DrawRectSolid(cx[c] - 3, cy[c] - 3, 0.1f, 6, 6, conv(0xFFFFFFFF));
                 };
 
-                // every textured face faint; skip the edit target in uv mode
+                // every textured face faint, skip the edit target in uv mode
                 // (it gets the bright pass below)
                 for (int o = 0; o < (int)editor.scene.objects.size(); o++)
                 {
@@ -408,21 +329,21 @@ namespace ui
         }
         else
         {
-            iconBtn(editor.btnAdd, Icon_Plus, editor.shapeMenuOpen);
+            iconBtn(editor.btnAdd, Icon_Plus, editor.shapeMenu.open);
             iconBtn(editor.btnDel, Icon_Trash, false);
         }
         iconBtn(editor.btnUndo, Icon_Undo, false, editor.hasUndo());
         iconBtn(editor.btnRedo, Icon_Redo, false, editor.hasRedo());
         if (editor.is3D())
-            iconBtn(editor.btnView, Icon_Eye, editor.viewMenuOpen);
-        iconBtn(editor.btnMenu, Icon_Menu, editor.fileMenuOpen);
+            iconBtn(editor.btnView, Icon_Eye, editor.viewMenu.open);
+        iconBtn(editor.btnMenu, Icon_Menu, editor.fileMenu.open);
 
         // bottom bar: model controls (mode + sub-switch), or texture tools
         if (editor.is3D())
         {
-            if (editor.modeMenuOpen)
+            if (editor.modeMenu.open)
                 C2D_DrawRectSolid(bm.x, bm.y, 0.0f, bm.w, bm.h, conv(kActiveBg));
-            const u32 modeCol = editor.modeMenuOpen ? kIconActive : kIconIdle;
+            const u32 modeCol = editor.modeMenu.open ? kIconActive : kIconIdle;
             icons::draw(kModeIcons[modeIdx], bm.x + 5,
                         bm.y + (bm.h - kIcon) / 2.0f, kIcon, modeCol);
             textLeft(&modeLabels[modeIdx], modeLabelH[modeIdx], bm.x + 5 + kIcon + 4, bm.y, bm.h);
@@ -453,9 +374,9 @@ namespace ui
             // mode button (icon + label), bottom-left
             const Rect& tm = editor.tex.btnTexMode;
             const int texIdx = (int)editor.tex.texMode;
-            if (editor.tex.texModeMenuOpen)
+            if (editor.tex.texModeMenu.open)
                 C2D_DrawRectSolid(tm.x, tm.y, 0.0f, tm.w, tm.h, conv(kActiveBg));
-            const u32 tmCol = editor.tex.texModeMenuOpen ? kIconActive : kIconIdle;
+            const u32 tmCol = editor.tex.texModeMenu.open ? kIconActive : kIconIdle;
             icons::draw(kTexModeIcons[texIdx], tm.x + 5,
                         tm.y + (tm.h - kIcon) / 2.0f, kIcon, tmCol);
             textLeft(&texModeLabels[texIdx], texModeLabelH[texIdx], tm.x + 5 + kIcon + 4, tm.y, tm.h);
@@ -564,61 +485,36 @@ namespace ui
         }
         // texture-mode overflow menu button (texture all / untexture all)
         else if (editor.mode == EditMode::Texture && editor.is3D())
-            iconBtn(editor.btnTexMenu, Icon_More, editor.texActionMenuOpen);
+            iconBtn(editor.btnTexMenu, Icon_More, editor.texActionMenu.open);
 
-        // popups on top
-        if (editor.modeMenuOpen)
+        // toolbar popups on top: each widget draws itself when open (exportMenu
+        // is a flyout, so file + export can both be open)
+        if (editor.modeMenu.open)
         {
-            drawPopup(editor.modeMenu, Editor::kNumModes, kModeIcons, modeLabels,
-                      modeLabelH, modeIdx);
+            bool on[Editor::kNumModes] = {};
+            on[modeIdx] = true;
+            editor.modeMenu.draw(on);
         }
-        else if (editor.shapeMenuOpen)
+        if (editor.shapeMenu.open)
+            editor.shapeMenu.draw();
+        if (editor.fileMenu.open)
+            editor.fileMenu.draw();
+        if (editor.exportMenu.open)
+            editor.exportMenu.draw();
+        if (editor.viewMenu.open)
         {
-            drawPopup(editor.shapeMenu, Editor::kNumShapes, kShapeIcons, shapeLabels,
-                      shapeLabelH, -1);
+            const bool on[Editor::kNumView] = {editor.wireframe, editor.showFaces,
+                                               editor.flipViews, editor.shading};
+            editor.viewMenu.draw(on);
         }
-        else if (editor.fileMenuOpen)
+        if (editor.texActionMenu.open)
+            editor.texActionMenu.draw();
+        if (editor.tex.texModeMenu.open)
         {
-            drawPopup(editor.fileMenu, Editor::kNumMenu, kFileIcons, fileLabels,
-                      fileLabelH, -1);
+            bool on[TextureEditor::kNumTexModes] = {};
+            on[(int)editor.tex.texMode] = true;
+            editor.tex.texModeMenu.draw(on);
         }
-        else if (editor.texActionMenuOpen)
-        {
-            drawPopup(editor.texActionMenu, Editor::kNumTexActions, kTexActionIcons,
-                      texActionLabels, texActionLabelH, -1);
-        }
-        else if (editor.tex.texModeMenuOpen)
-        {
-            drawPopup(editor.tex.texModeMenu, TextureEditor::kNumTexModes, kTexModeIcons,
-                      texModeLabels, texModeLabelH, (int)editor.tex.texMode);
-        }
-        else if (editor.viewMenuOpen)
-        {
-            // toggle menu: each row highlighted by its own on/off state
-            const Rect* rects = editor.viewMenu;
-            const bool on[Editor::kNumView] = {editor.wireframe, editor.showFaces, editor.flipViews, editor.shading};
-            const Rect& first = rects[0];
-            const Rect& last = rects[Editor::kNumView - 1];
-            const int panX = first.x - 2, panY = first.y - 2;
-            const int panW = first.w + 4, panH = (last.y + last.h) - first.y + 4;
-            C2D_DrawRectSolid(panX, panY, 0.0f, panW, panH, conv(kPanelBg));
-            outline(panX, panY, panW, panH, kBorderCol);
-            for (int i = 0; i < Editor::kNumView; i++)
-            {
-                const Rect& r = rects[i];
-                C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(on[i] ? kActiveBg : kItemBg));
-                outline(r.x, r.y, r.w, r.h, kBorderCol);
-                icons::draw(kViewIcons[i], r.x + 5, r.y + (r.h - kIcon) / 2.0f, kIcon,
-                            on[i] ? kIconActive : kIconIdle);
-                textLeft(&viewLabels[i], viewLabelH[i], r.x + 5 + kIcon + 4, r.y, r.h);
-            }
-        }
-
-        // export submenu draws over the still-open file menu, so it's separate
-        // from the mutually-exclusive popups above
-        if (editor.exportMenuOpen)
-            drawPopup(editor.exportMenu, Editor::kNumExport, kExportIcons, exportLabels,
-                      exportLabelH, -1);
 
         // status toast, centered under the top bar
         if (editor.statusTime > 0.0f && editor.statusMsg)

@@ -16,7 +16,7 @@ struct Viewport
 
     C3D_Mtx matrix() const;
 
-    // screen px to world coords of the two mapped axes; false if outside
+    // screen px to world coords of the two mapped axes, false if outside
     bool tapToWorld(int px, int py, float& wx, float& wy) const;
 
     float spanX() const { return (float)w / scale; }

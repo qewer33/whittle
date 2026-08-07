@@ -18,7 +18,7 @@ static void bindVertexBuffer(void* vbo)
 {
     C3D_BufInfo* bufInfo = C3D_GetBufInfo();
     BufInfo_Init(bufInfo);
-    // perm 0x210: slot0=v0, slot1=v1, slot2=v2; must match AttrInfo
+    // perm 0x210: slot0=v0, slot1=v1, slot2=v2, must match AttrInfo
     BufInfo_Add(bufInfo, vbo, kVertexSize, 3, 0x210);
 }
 
@@ -239,7 +239,7 @@ static float faceShade(const Vec3& p0, const Vec3& p1, const Vec3& p2)
     return s > 1.0f ? 1.0f : s;
 }
 
-// draws a mesh's flat or textured faces; caller sets the projection uniform.
+// draws a mesh's flat or textured faces, caller sets the projection uniform.
 // shared by preview and ortho views. shade bakes flat lighting into the color.
 void Renderer::drawFaceSubset(const Mesh& mesh, bool textured, GPU_CULLMODE cull,
                               bool depthTest, bool shade)
@@ -264,7 +264,7 @@ void Renderer::drawFaceSubset(const Mesh& mesh, bool textured, GPU_CULLMODE cull
                                           mesh.positions[face.indices[1]],
                                           mesh.positions[face.indices[2]])
                               : 1.0f;
-        // shaded textures modulate texture*color, so put the shade in the color;
+        // shaded textures modulate texture*color, so put the shade in the color,
         // otherwise bake it into the flat color directly
         float vc[4];
         if (textured && shade)
@@ -498,7 +498,7 @@ static const float kLetZ[3][4] = {
     {-0.4f, 0.5f, 0.4f, 0.5f}, {0.4f, 0.5f, -0.4f, -0.5f}, {-0.4f, -0.5f, 0.4f, -0.5f}};
 
 // XYZ axis indicator in the preview's bottom-left. view-space anchored for a
-// constant size; orthographic so the axes don't skew; depth-off, drawn on top.
+// constant size, orthographic so the axes don't skew, depth-off, drawn on top.
 void Renderer::drawGizmo(const Camera& camera)
 {
     const Vec3 e = camera.eye();
@@ -521,7 +521,7 @@ void Renderer::drawGizmo(const Camera& camera)
     Mtx_OrthoTilt(&proj, -halfW, halfW, -halfH, halfH, 0.1f, 100.0f, true);
     Mtx_Multiply(&vp, &proj, &view);
 
-    // anchor a fixed offset from the view center (target); in ortho this lands
+    // anchor a fixed offset from the view center (target), in ortho this lands
     // at a stable screen corner with no positional skew
     const Vec3 o = {
         t.x + right.x * ox + up.x * oy,

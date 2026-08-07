@@ -7,6 +7,7 @@
 #include "mesh.h"
 #include "renderer.h"
 #include "ui.h"
+#include "uidraw.h"
 
 int main()
 {
@@ -19,6 +20,7 @@ int main()
         return 1;
 
     ui::init();
+    uidraw::init(); // widget label buffer, before Editor builds its menus
     icons::init();
 
     Editor editor;
@@ -98,6 +100,7 @@ int main()
     }
 
     icons::exit();
+    uidraw::exit();
     ui::exit();
     renderer.exit();
     C2D_Fini();

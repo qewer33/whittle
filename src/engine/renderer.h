@@ -31,7 +31,7 @@ struct Renderer
     // citro2d clobbers the C3D state, so re-bind ours before drawing
     void bind3DState();
 
-    // line pass. mvp maps world to ndc; bufW/bufH are the target's framebuffer
+    // line pass. mvp maps world to ndc, bufW/bufH are the target's framebuffer
     // dims (240x400 top, 240x320 bottom), used to scale line width into ndc
     void drawLineSet(const Line* lines, int count, const C3D_Mtx& mvp,
                      u32 color, int bufW, int bufH);
@@ -42,7 +42,7 @@ struct Renderer
     void clearScissor();
 
     // opaque filled faces for a viewport. cull drops the away-facing side so
-    // the outer surface shows without depth sorting; caller picks the winding
+    // the outer surface shows without depth sorting, caller picks the winding
     void drawFaces(const Mesh& mesh, const C3D_Mtx& mvp, GPU_CULLMODE cull);
 
     static constexpr int kTexSize = 128; // must match Scene::kTexSize
@@ -53,7 +53,7 @@ struct Renderer
 private:
     static constexpr int kBottomBufW = 240;
     static constexpr int kBottomBufH = 320;
-    static constexpr u32 kInitVerts = 16384; // starting vbo size; grows to fit
+    static constexpr u32 kInitVerts = 16384; // starting vbo size, grows to fit
 
     C3D_RenderTarget* topTarget_ = nullptr;
     C3D_RenderTarget* bottomTarget_ = nullptr;
@@ -70,7 +70,7 @@ private:
     // appends to fresh space. reset per frame. solid=preview+ortho, wire=lines.
     u32 solidVertOffset_ = 0;
     u32 wireVertOffset_ = 0;
-    // verts requested this frame (counts past capacity); drives the grow at the
+    // verts requested this frame (counts past capacity), drives the grow at the
     // next frame boundary
     u32 solidNeeded_ = 0;
     u32 wireNeeded_ = 0;

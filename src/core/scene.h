@@ -103,7 +103,7 @@ struct Scene
     std::string projectPath;
     bool dirty = false; // unsaved changes since the last save/load
 
-    bool save();                          // overwrite projectPath; false if untitled
+    bool save();                          // overwrite projectPath, false if untitled
     bool saveAs(const std::string& name); // slug a new file under the projects dir
     bool load(const std::string& path);   // load a specific project file
     bool loadNewest();                    // load the most-recently-saved project

@@ -26,7 +26,7 @@ C3D_Mtx Viewport::matrix() const
     const float tx = 1.0f - 2.0f * (y + h / 2.0f) / 240.0f;
     const float ty = 1.0f - 2.0f * (x + w / 2.0f) / 320.0f;
 
-    // flip mirrors the horizontal (axisX) axis; r[1] normally negates it
+    // flip mirrors the horizontal (axisX) axis, r[1] normally negates it
     const float sx = flipped ? 1.0f : -1.0f;
 
     // map world center to the rect center so grid and mesh pan together

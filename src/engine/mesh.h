@@ -37,13 +37,13 @@ struct Mesh
     std::vector<Face> faces;
 
     int addVertex(Vec3 p);
-    // drops the vertex and any face using it; returns count removed (0 if bad idx)
+    // drops the vertex and any face using it, returns count removed (0 if bad idx)
     int removeVertex(int idx);
     void moveVertex(int idx, Vec3 p);
 };
 
 // primitives centered at origin, faces wound CCW from outside. makeCube is
-// per-face colored; the rest use one base color shaded by normal
+// per-face colored, the rest use one base color shaded by normal
 Mesh makeCube(float size);
 Mesh makeSphere(float radius);
 Mesh makePyramid(float size);

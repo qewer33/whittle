@@ -6,6 +6,8 @@
 #include <math.h>
 #include <string>
 
+using namespace widgets;
+
 static float snapToGrid(float v, float grid)
 {
     return roundf(v / grid) * grid;
@@ -55,7 +57,7 @@ Editor::Editor()
     for (int i = 0; i < 3; i++)
         baseView[i] = {viewports[i].x, viewports[i].y, viewports[i].w, viewports[i].h};
 
-    // top bar: 3D/2D workspace switch (left); add, del, undo, redo cluster;
+    // top bar: 3D/2D workspace switch (left), add, del, undo, redo cluster,
     // view toggles + hamburger menu (right)
     const int bw = 30, ws = 52;
     btnWorkspace = {0, 0, ws, TB}; // labeled switch, top-left corner
@@ -66,7 +68,7 @@ Editor::Editor()
     btnMenu = {320 - bw, 0, bw, TB};        // hamburger, top-right corner
     btnView = {320 - 2 * bw - 4, 0, bw, TB}; // view toggles popup (3D workspace)
 
-    // bottom bar: mode (icon+text) left; the segmented sub-switch is centered
+    // bottom bar: mode (icon+text) left, the segmented sub-switch is centered
     // and computed on the fly (subSegRect)
     const int by = 240 - BB;
     btnMode = {0, by, 84, BB};
@@ -80,26 +82,24 @@ Editor::Editor()
     // texture mode: overflow menu (texture all / untexture all), far right
     btnTexMenu = {320 - bw, by, bw, BB};
 
-    // mode popup opens up, shape/file popups open down
-    const int mw = 90, ih = 30;
-    for (int i = 0; i < kNumModes; i++)
-        modeMenu[i] = {btnMode.x, by - kNumModes * ih + i * ih, mw, ih};
-    for (int i = 0; i < kNumShapes; i++)
-        shapeMenu[i] = {btnAdd.x, TB + i * ih, mw, ih};
-    // file popup right-aligned under the hamburger (top-right corner)
-    for (int i = 0; i < kNumMenu; i++)
-        fileMenu[i] = {btnMenu.x + bw - mw, TB + i * ih, mw, ih};
-    // export submenu flies out to the left of the file menu's Export item
-    for (int i = 0; i < kNumExport; i++)
-        exportMenu[i] = {fileMenu[2].x - mw, fileMenu[2].y + i * ih, mw, ih};
-    // view popup drops down, right-aligned under its button
-    for (int i = 0; i < kNumView; i++)
-        viewMenu[i] = {btnView.x + bw - mw, TB + i * ih, mw, ih};
-    // texture overflow popup opens up, right-aligned above its button; wider
-    // than the shared mw so "Untexture All" fits
-    const int tw = 112;
-    for (int i = 0; i < kNumTexActions; i++)
-        texActionMenu[i] = {btnTexMenu.x + bw - tw, by - kNumTexActions * ih + i * ih, tw, ih};
+    // toolbar popups. each anchors to its button and lays itself out.
+    modeMenu.setup(btnMode, Placement::Above, Align::Start, 90,
+                   {{Icon_Box, "Object"}, {Icon_Pencil, "Edit"}, {Icon_Paint, "Paint"},
+                    {Icon_Texture, "Texture"}});
+    shapeMenu.setup(btnAdd, Placement::Below, Align::Start, 90,
+                    {{Icon_Box, "Cube"}, {Icon_Circle, "Sphere"}, {Icon_Pyramid, "Pyramid"},
+                     {Icon_Cylinder, "Cylinder"}, {Icon_Square, "Plane"}});
+    fileMenu.setup(btnMenu, Placement::Below, Align::End, 90,
+                   {{Icon_Save, "Save"}, {Icon_Load, "Load"}, {Icon_Export, "Export"},
+                    {Icon_Exit, "Exit"}});
+    exportMenu.setup(fileMenu.itemRect(2), Placement::LeftOf, Align::Start, 90,
+                     {{Icon_Export, "OBJ"}, {Icon_Export, "STL"}});
+    viewMenu.setup(btnView, Placement::Below, Align::End, 90,
+                   {{Icon_Box, "Wireframe"}, {Icon_Square, "Faces"}, {Icon_Flip, "Flip"},
+                    {Icon_Shade, "Shading"}},
+                   false); // toggles: stay open on pick
+    texActionMenu.setup(btnTexMenu, Placement::Above, Align::End, 112,
+                        {{Icon_Texture, "Texture All"}, {Icon_Eraser, "Untexture All"}});
 }
 
 void Editor::setStatus(const char* m)
@@ -132,7 +132,7 @@ void Editor::serviceFileOps()
     }
     else if (op == FileOp::ExportObj || op == FileOp::ExportStl)
     {
-        // export under the project name; prompt for one if still untitled
+        // export under the project name, prompt for one if still untitled
         std::string name = scene.projectName;
         bool ok = !name.empty();
         if (!ok)
@@ -237,7 +237,7 @@ static float distToSegment(float px, float py, float ax, float ay, float bx, flo
     return sqrtf(dx * dx + dy * dy);
 }
 
-// nearest edge (a face-border segment) to the tap; returns its two vert indices
+// nearest edge (a face-border segment) to the tap, returns its two vert indices
 bool Editor::pickEdge(const Viewport& vp, int px, int py, int& outObj, int& outV0, int& outV1)
 {
     float bestD = 10.0f; // px
@@ -263,7 +263,7 @@ bool Editor::pickEdge(const Viewport& vp, int px, int py, int& outObj, int& outV
     return bO >= 0;
 }
 
-// shoelace; sign tells winding, front-facing quads come out positive here
+// shoelace, sign tells winding, front-facing quads come out positive here
 static float quadSignedArea(const float* sx, const float* sy)
 {
     float a = 0.0f;
@@ -371,120 +371,75 @@ void Editor::handleTouchDown(int px, int py)
     pressedEdgeObj = pressedEdgeV0 = pressedEdgeV1 = -1;
     pressedEdgeWasSelected = false;
     pressedSub = false;
-    extruding = false; // re-armed below by the extrude button / grab consume
+    extruding = false; // re armed below by the extrude button / grab consume
     draggingSub = false;
     subDragViewport = -1;
     panning = false;
     panViewport = -1;
 
-    // an open popup eats the tap: hit an item to apply, anywhere else closes
-    if (modeMenuOpen)
+    // toolbar popups: dispatch the tap to whichever menu is open, act on the
+    // picked row. exportMenu is the file menu's flyout, so it eats first.
+    if (exportMenu.open)
     {
-        for (int i = 0; i < kNumModes; i++)
-            if (modeMenu[i].contains(px, py))
-            {
-                mode = (EditMode)i;
-                modeMenuOpen = false;
-                return;
-            }
-        modeMenuOpen = false;
+        const int r = exportMenu.handle(px, py);
+        if (r == 0) pendingFileOp = FileOp::ExportObj;
+        else if (r == 1) pendingFileOp = FileOp::ExportStl;
+        fileMenu.open = false; // flyout ended, close its parent too
         return;
     }
-    if (shapeMenuOpen)
+    if (fileMenu.open)
     {
-        for (int i = 0; i < kNumShapes; i++)
-            if (shapeMenu[i].contains(px, py))
-            {
-                const int idx = scene.addShape(i);
-                if (idx >= 0 && mode == EditMode::Object)
-                    scene.selectedObjects.push_back(idx);
-                shapeMenuOpen = false;
-                return;
-            }
-        shapeMenuOpen = false;
+        const int r = fileMenu.handle(px, py);
+        if (r == 0) pendingFileOp = FileOp::Save;
+        else if (r == 1) pendingFileOp = FileOp::Load;
+        else if (r == 2) { fileMenu.open = true; exportMenu.open = true; } // keep parent, fly out
+        else if (r == 3) wantQuit = true;
         return;
     }
-    // export submenu sits over the file menu, so it eats taps first; anywhere
-    // outside its items dismisses both
-    if (exportMenuOpen)
+    if (modeMenu.open)
     {
-        for (int i = 0; i < kNumExport; i++)
-            if (exportMenu[i].contains(px, py))
-            {
-                pendingFileOp = i == 0 ? FileOp::ExportObj : FileOp::ExportStl;
-                exportMenuOpen = false;
-                fileMenuOpen = false;
-                return;
-            }
-        exportMenuOpen = false;
-        fileMenuOpen = false;
+        const int r = modeMenu.handle(px, py);
+        if (r >= 0) mode = (EditMode)r;
         return;
     }
-    if (fileMenuOpen)
+    if (shapeMenu.open)
     {
-        for (int i = 0; i < kNumMenu; i++)
-            if (fileMenu[i].contains(px, py))
-            {
-                if (i == 0)
-                    pendingFileOp = FileOp::Save;
-                else if (i == 1)
-                    pendingFileOp = FileOp::Load;
-                else if (i == 2)
-                {
-                    exportMenuOpen = true; // fly out the format submenu, keep this menu open
-                    return;
-                }
-                else
-                    wantQuit = true;
-                fileMenuOpen = false;
-                return;
-            }
-        fileMenuOpen = false;
+        const int r = shapeMenu.handle(px, py);
+        if (r >= 0)
+        {
+            const int idx = scene.addShape(r);
+            if (idx >= 0 && mode == EditMode::Object)
+                scene.selectedObjects.push_back(idx);
+        }
         return;
     }
-    if (tex.texModeMenuOpen)
+    if (viewMenu.open) // toggles: stay open, flip the picked flag
     {
-        for (int i = 0; i < TextureEditor::kNumTexModes; i++)
-            if (tex.texModeMenu[i].contains(px, py))
-            {
-                tex.texMode = (TexMode)i;
-                tex.texModeMenuOpen = false;
-                return;
-            }
-        tex.texModeMenuOpen = false;
+        const int r = viewMenu.handle(px, py);
+        if (r == 0) wireframe = !wireframe;
+        else if (r == 1) showFaces = !showFaces;
+        else if (r == 2) { flipViews = !flipViews; applyFlip(); }
+        else if (r == 3) shading = !shading;
         return;
     }
-    // view menu items toggle and keep the menu open; a tap elsewhere closes it
-    if (viewMenuOpen)
+    if (texActionMenu.open)
     {
-        if (viewMenu[0].contains(px, py)) { wireframe = !wireframe; return; }
-        if (viewMenu[1].contains(px, py)) { showFaces = !showFaces; return; }
-        if (viewMenu[2].contains(px, py)) { flipViews = !flipViews; applyFlip(); return; }
-        if (viewMenu[3].contains(px, py)) { shading = !shading; return; }
-        viewMenuOpen = false;
+        const int r = texActionMenu.handle(px, py);
+        if (r >= 0)
+        {
+            scene.snapshot();
+            if (r == 0) { scene.textureAllFaces(); tex.autoLayout(); }
+            else scene.untextureAllFaces();
+        }
         return;
     }
-    // texture overflow menu: run the picked action; a tap elsewhere closes it
-    if (texActionMenuOpen)
+    if (tex.texModeMenu.open)
     {
-        for (int i = 0; i < kNumTexActions; i++)
-            if (texActionMenu[i].contains(px, py))
-            {
-                scene.snapshot();
-                if (i == 0) // Texture All
-                {
-                    scene.textureAllFaces();
-                    tex.autoLayout();
-                }
-                else // Untexture All
-                    scene.untextureAllFaces();
-                texActionMenuOpen = false;
-                return;
-            }
-        texActionMenuOpen = false;
+        const int r = tex.texModeMenu.handle(px, py);
+        if (r >= 0) tex.texMode = (TexMode)r;
         return;
     }
-    // color picker popup: presets, the SV square, the hue bar; tap-out closes
+    // color picker popup: presets, the SV square, the hue bar, tap-out closes
     if (colorPickerOpen)
     {
         for (int i = 0; i < kPaletteCount; i++)
@@ -517,13 +472,13 @@ void Editor::handleTouchDown(int px, int py)
     }
 
     // top bar. in the 2D workspace + and delete become recenter and clear
-    if (btnWorkspace.contains(px, py)) { workspace = is3D() ? Workspace::TwoD : Workspace::ThreeD; modeMenuOpen = shapeMenuOpen = fileMenuOpen = viewMenuOpen = tex.texModeMenuOpen = false; return; }
-    if (btnMenu.contains(px, py)) { fileMenuOpen = true; modeMenuOpen = shapeMenuOpen = viewMenuOpen = tex.texModeMenuOpen = false; return; }
+    if (btnWorkspace.contains(px, py)) { workspace = is3D() ? Workspace::TwoD : Workspace::ThreeD; closeMenus(); tex.texModeMenu.open = false; return; }
+    if (btnMenu.contains(px, py)) { closeMenus(); fileMenu.open = true; tex.texModeMenu.open = false; return; }
     if (btnAdd.contains(px, py))
     {
         if (is2D())
             tex.fitCanvas();
-        else { shapeMenuOpen = true; modeMenuOpen = fileMenuOpen = viewMenuOpen = tex.texModeMenuOpen = false; }
+        else { closeMenus(); shapeMenu.open = true; tex.texModeMenu.open = false; }
         return;
     }
     if (btnDel.contains(px, py))
@@ -536,7 +491,7 @@ void Editor::handleTouchDown(int px, int py)
     }
     if (btnUndo.contains(px, py)) { scene.undo(); return; }
     if (btnRedo.contains(px, py)) { scene.redo(); return; }
-    if (is3D() && btnView.contains(px, py)) { viewMenuOpen = !viewMenuOpen; modeMenuOpen = shapeMenuOpen = fileMenuOpen = false; return; }
+    if (is3D() && btnView.contains(px, py)) { const bool willOpen = !viewMenu.open; closeMenus(); viewMenu.open = willOpen; return; }
 
     // active-color button (paint contexts) opens the picker
     if (colorActive() && btnColor.contains(px, py))
@@ -555,7 +510,7 @@ void Editor::handleTouchDown(int px, int py)
     }
 
     // bottom bar: model controls
-    if (btnMode.contains(px, py)) { modeMenuOpen = true; shapeMenuOpen = fileMenuOpen = viewMenuOpen = false; return; }
+    if (btnMode.contains(px, py)) { closeMenus(); modeMenu.open = true; return; }
     // segmented sub-switch, per mode
     for (int i = 0; i < subSegCount(); i++)
         if (subSegRect(i).contains(px, py))
@@ -598,8 +553,8 @@ void Editor::handleTouchDown(int px, int py)
     // Texture mode: open the overflow menu (texture all / untexture all)
     if (mode == EditMode::Texture && btnTexMenu.contains(px, py))
     {
-        texActionMenuOpen = true;
-        modeMenuOpen = shapeMenuOpen = fileMenuOpen = viewMenuOpen = false;
+        closeMenus();
+        texActionMenu.open = true;
         return;
     }
 
@@ -996,8 +951,7 @@ void Editor::handleTouchUp(int px, int py)
         return;
     }
 
-    // a plain tap on an already-selected item deselects it (a new one was
-    // added on press)
+    // a plain tap on an already selected item deselects it (a new one was added on press)
     if (!dragMoved)
     {
         if (mode == EditMode::Edit && subLevel == SubLevel::Vertex &&

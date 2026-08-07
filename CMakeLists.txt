@@ -25,6 +25,8 @@ add_executable(whittle
     src/core/meshexport.cpp
     src/ui/icons.cpp
     src/ui/ui.cpp
+    src/ui/uidraw.cpp
+    src/ui/widgets/menu.cpp
 )
 
 ctr_add_shader_library(

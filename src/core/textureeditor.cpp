@@ -1,9 +1,10 @@
 #include "textureeditor.h"
 #include "palette.h"
+#include "icons.h"
 #include <algorithm>
 #include <math.h>
 
-// winding-agnostic point-in-triangle; rejects zero-area tris (tris are stored
+// winding-agnostic point-in-triangle, rejects zero-area tris (tris are stored
 // as quads {a,b,c,c})
 static bool pointInTri(float px, float py, float ax, float ay, float bx,
                        float by, float cx, float cy)
@@ -24,16 +25,15 @@ void TextureEditor::layout()
     const int TB = 22, BB = 22, bw = 30;
     const int by = 240 - BB;
     btnTexMode = {0, by, 84, BB};
-    // paint: brush/fill/eyedropper are the centered segmented switch (segCell);
+    // paint: brush/fill/eyedropper are the centered segmented switch (segCell),
     // brush size sits left of the far-right color button (owned by Editor)
     btnBrushSize = {320 - 2 * bw - 4, by, bw, BB};
     // uv tools, right-aligned: auto-layout, fit
     btnAutoLayout = {320 - 2 * bw - 4, by, bw, BB};
     btnUvReset = {320 - bw, by, bw, BB};
 
-    const int mw = 90, ih = 30;
-    for (int i = 0; i < kNumTexModes; i++)
-        texModeMenu[i] = {btnTexMode.x, by - kNumTexModes * ih + i * ih, mw, ih};
+    texModeMenu.setup(btnTexMode, widgets::Placement::Above, widgets::Align::Start, 90,
+                      {{Icon_Paint, "Paint"}, {Icon_Move, "UV"}});
 
     (void)TB;
     fitCanvas();
@@ -69,7 +69,7 @@ void TextureEditor::stampBrush(int tx, int ty)
     scene.textureDirty = true;
 }
 
-// Bresenham line; stamp the brush at each step so fast drags leave no gaps
+// Bresenham line, stamp the brush at each step so fast drags leave no gaps
 void TextureEditor::brushLine(int x0, int y0, int x1, int y1)
 {
     const int dx = x1 > x0 ? x1 - x0 : x0 - x1;
@@ -173,7 +173,7 @@ bool TextureEditor::pickUvHandle(int px, int py)
     }
 
     // otherwise, re-select another textured face's island as the edit target
-    // (no drag yet; the next tap edits it)
+    // (no drag yet, the next tap edits it)
     for (int o = 0; o < (int)scene.objects.size(); o++)
     {
         const Mesh& m = scene.objects[o];
@@ -295,7 +295,7 @@ void TextureEditor::handleTouchDown(int px, int py)
         return;
     }
 
-    if (btnTexMode.contains(px, py)) { texModeMenuOpen = true; return; }
+    if (btnTexMode.contains(px, py)) { texModeMenu.open = true; return; }
     const bool uv = texMode == TexMode::Uv;
     if (!uv) // brush / fill / eyedropper segmented switch
         for (int i = 0; i < 3; i++)

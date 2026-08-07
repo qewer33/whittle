@@ -193,7 +193,7 @@ void Scene::deleteSelectedVerts()
     if (selectedVerts.empty())
         return;
     snapshot();
-    // remove high indices first; removeVertex shifts the rest down
+    // remove high indices first, removeVertex shifts the rest down
     for (int o = 0; o < (int)objects.size(); o++)
     {
         std::vector<int> vs;
