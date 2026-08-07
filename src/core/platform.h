@@ -4,8 +4,7 @@
 
 namespace platform
 {
-    // native software keyboard. returns true and fills `out` on confirm, false
-    // on cancel. `initial` prefills the field. must be called between frames
-    // (the keyboard is a system applet that takes over both screens).
+    // native software keyboard. returns true + fills `out` on confirm, false on
+    // cancel. must be called between frames (it's a system applet).
     bool inputText(const char* hint, const char* initial, std::string& out);
 }

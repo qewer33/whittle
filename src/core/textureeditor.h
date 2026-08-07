@@ -19,9 +19,8 @@ enum class TexMode
     Uv,
 };
 
-// Interaction layer for the texture workspace: canvas view + nav, pixel
-// painting, and UV editing. Operates on the shared Scene and the editor's
-// current paint color (by reference).
+// interaction layer for the texture workspace: canvas nav, pixel painting, uv
+// editing. operates on the shared Scene and the editor's paint color (by ref).
 struct TextureEditor
 {
     static constexpr int kNumTexModes = 2; // paint, uv

@@ -66,9 +66,8 @@ private:
     C3D_Tex tex_; // shared model texture
     void* solidVbo = nullptr;
     void* wireVbo = nullptr;
-    // append cursors into the shared vbos. passes are queued until endFrame(),
-    // so each must append to fresh space instead of reusing offset 0. reset
-    // per frame. solidVbo: preview + ortho faces; wireVbo: all line passes
+    // append cursors into the shared vbos: passes queue until endFrame(), so each
+    // appends to fresh space. reset per frame. solid=preview+ortho, wire=lines.
     u32 solidVertOffset_ = 0;
     u32 wireVertOffset_ = 0;
 

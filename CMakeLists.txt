@@ -22,6 +22,7 @@ add_executable(whittle
     src/core/viewrender.cpp
     src/core/platform.cpp
     src/core/projectbrowser.cpp
+    src/core/meshexport.cpp
     src/ui/icons.cpp
     src/ui/ui.cpp
 )
@@ -51,7 +52,7 @@ set(ICON_PNGS
     ${ICON_DIR}/27_edge.png ${ICON_DIR}/28_pencil.png ${ICON_DIR}/29_extrude.png
     ${ICON_DIR}/30_subdivide.png ${ICON_DIR}/31_split.png ${ICON_DIR}/32_shade.png
     ${ICON_DIR}/33_minimize.png ${ICON_DIR}/34_eraser.png ${ICON_DIR}/35_more.png
-    ${ICON_DIR}/36_back.png
+    ${ICON_DIR}/36_back.png ${ICON_DIR}/37_export.png
 )
 set(ICON_T3X ${CMAKE_CURRENT_BINARY_DIR}/icons.t3x)
 add_custom_command(

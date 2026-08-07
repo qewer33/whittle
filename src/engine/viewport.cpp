@@ -11,9 +11,8 @@ static void setComp(C3D_FVec& v, int axis, float value)
         v.z = value;
 }
 
-// world point to NDC for this viewport
-// the bottom farmebuffer is rotated 90deg, so world axisY drives
-// ndc x and axisX drives ndc y. r[0]=ndc x, r[1]=ndc y, r[3]=w=1.
+// world point to NDC. the bottom framebuffer is rotated 90deg, so world axisY
+// drives ndc x and axisX drives ndc y. r[0]=ndc x, r[1]=ndc y, r[3]=w=1.
 C3D_Mtx Viewport::matrix() const
 {
     C3D_Mtx m;

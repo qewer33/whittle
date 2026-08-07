@@ -10,9 +10,8 @@ struct Rect
     }
 };
 
-// Cell i of a centered segmented switch with `count` cells, floating inset in
-// the bottom bar. Shared by the mode sub-switches and the texture tool switch
-// so draw and hit-test always agree.
+// cell i of a centered segmented switch (count cells). shared by draw and
+// hit-test so they agree.
 inline Rect segCell(int i, int count)
 {
     constexpr int segW = 44, segPad = 3, barY = 240 - 22, barH = 22;

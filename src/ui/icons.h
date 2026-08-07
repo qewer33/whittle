@@ -42,6 +42,7 @@ enum Icon
     Icon_Eraser,
     Icon_More,
     Icon_Back,
+    Icon_Export,
     Icon_Count,
 };
 

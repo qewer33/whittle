@@ -8,9 +8,8 @@ namespace ui
     void init();
     void exit();
 
-    // draws the toolbars and, in the texture workspace, the paint canvas (from
-    // the shared texture). must run inside a 2D scene (C2D_Prepare +
-    // C2D_SceneBegin). viewport contents are citro3d (Editor::renderViewports).
+    // draws the toolbars and, in the 2D workspace, the paint canvas. must run in a
+    // 2D scene (C2D_Prepare + C2D_SceneBegin). viewports are citro3d.
     void draw(Editor& editor, C3D_Tex* texture);
 
     // top-screen overlay: project name + unsaved dot. run inside a 2D scene

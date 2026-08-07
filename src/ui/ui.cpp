@@ -23,7 +23,7 @@ namespace
         "Object", "Edit", "Paint", "Texture"};
     const char* const kShapeLabels[Editor::kNumShapes] = {
         "Cube", "Sphere", "Pyramid", "Cylinder", "Plane"};
-    const char* const kFileLabels[Editor::kNumMenu] = {"Save", "Load", "Exit"};
+    const char* const kFileLabels[Editor::kNumMenu] = {"Save", "Load", "Export", "Exit"};
     const char* const kTexModeLabels[TextureEditor::kNumTexModes] = {"Paint", "UV"};
     const char* const kViewLabels[Editor::kNumView] = {"Wireframe", "Faces", "Flip", "Shading"};
     const char* const kWorkspaceLabels[2] = {"3D", "2D"}; // ThreeD, TwoD
@@ -33,10 +33,12 @@ namespace
         Icon_Box, Icon_Pencil, Icon_Paint, Icon_Texture};
     const Icon kShapeIcons[Editor::kNumShapes] = {
         Icon_Box, Icon_Circle, Icon_Pyramid, Icon_Cylinder, Icon_Square};
-    const Icon kFileIcons[Editor::kNumMenu] = {Icon_Save, Icon_Load, Icon_Exit};
+    const Icon kFileIcons[Editor::kNumMenu] = {Icon_Save, Icon_Load, Icon_Export, Icon_Exit};
     const Icon kTexModeIcons[TextureEditor::kNumTexModes] = {Icon_Paint, Icon_Move};
     const Icon kViewIcons[Editor::kNumView] = {Icon_Box, Icon_Square, Icon_Flip, Icon_Shade};
     const Icon kTexActionIcons[Editor::kNumTexActions] = {Icon_Texture, Icon_Eraser};
+    const char* const kExportLabels[Editor::kNumExport] = {"OBJ", "STL"};
+    const Icon kExportIcons[Editor::kNumExport] = {Icon_Export, Icon_Export};
     // segmented sub-switch glyphs
     const Icon kTransformIcons[3] = {Icon_Move, Icon_Rotate, Icon_Scale};
     const Icon kSubLevelIcons[3] = {Icon_Vertex, Icon_Edge, Icon_Square};
@@ -65,6 +67,8 @@ namespace
     C2D_Text axisText[3];
     C2D_Text texActionLabels[Editor::kNumTexActions];
     float texActionLabelH[Editor::kNumTexActions] = {0};
+    C2D_Text exportLabels[Editor::kNumExport];
+    float exportLabelH[Editor::kNumExport] = {0};
     // project browser: Projects, Back, New, Delete, Open, Cancel
     const char* const kBrowserLabels[6] = {"Projects", "Back", "New", "Delete", "Open", "Cancel"};
     C2D_Text browserLabels[6];
@@ -265,6 +269,7 @@ namespace ui
             C2D_TextOptimize(&axisText[i]);
         }
         parseAll(texActionLabels, texActionLabelH, kTexActionLabels, Editor::kNumTexActions);
+        parseAll(exportLabels, exportLabelH, kExportLabels, Editor::kNumExport);
         parseAll(browserLabels, browserLabelH, kBrowserLabels, 6);
     }
 
@@ -481,9 +486,8 @@ namespace ui
         // model viewport chrome (the canvas is drawn earlier, behind the bars)
         if (editor.is3D())
         {
-            // gutters in the toolbar color: an outer frame around the ortho area
-            // plus the dividers between views. one shared width, centered on each
-            // edge (no doubling at seams).
+            // gutters in the toolbar color: outer frame around the ortho area
+            // plus the view dividers, one width centered on each edge.
             const u32 bc = conv(kBarBg);
             const int G = 3;
             const int ax0 = 0, ay0 = topH, aw = 320, ah = bm.y - topH;
@@ -609,6 +613,12 @@ namespace ui
                 textLeft(&viewLabels[i], viewLabelH[i], r.x + 5 + kIcon + 4, r.y, r.h);
             }
         }
+
+        // export submenu draws over the still-open file menu, so it's separate
+        // from the mutually-exclusive popups above
+        if (editor.exportMenuOpen)
+            drawPopup(editor.exportMenu, Editor::kNumExport, kExportIcons, exportLabels,
+                      exportLabelH, -1);
 
         // status toast, centered under the top bar
         if (editor.statusTime > 0.0f && editor.statusMsg)

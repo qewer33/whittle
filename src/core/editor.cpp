@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "viewrender.h"
 #include "platform.h"
+#include "meshexport.h"
 #include <algorithm>
 #include <math.h>
 #include <string>
@@ -88,6 +89,9 @@ Editor::Editor()
     // file popup right-aligned under the hamburger (top-right corner)
     for (int i = 0; i < kNumMenu; i++)
         fileMenu[i] = {btnMenu.x + bw - mw, TB + i * ih, mw, ih};
+    // export submenu flies out to the left of the file menu's Export item
+    for (int i = 0; i < kNumExport; i++)
+        exportMenu[i] = {fileMenu[2].x - mw, fileMenu[2].y + i * ih, mw, ih};
     // view popup drops down, right-aligned under its button
     for (int i = 0; i < kNumView; i++)
         viewMenu[i] = {btnView.x + bw - mw, TB + i * ih, mw, ih};
@@ -125,6 +129,22 @@ void Editor::serviceFileOps()
     {
         browser.open();
         screen = AppScreen::Browser;
+    }
+    else if (op == FileOp::ExportObj || op == FileOp::ExportStl)
+    {
+        // export under the project name; prompt for one if still untitled
+        std::string name = scene.projectName;
+        bool ok = !name.empty();
+        if (!ok)
+            ok = platform::inputText("Export name", "", name);
+        if (ok)
+        {
+            const bool r = op == FileOp::ExportObj ? meshexport::exportObj(scene, name)
+                                                   : meshexport::exportStl(scene, name);
+            setStatus(r ? (op == FileOp::ExportObj ? "Exported OBJ" : "Exported STL") : "Export failed");
+        }
+        else
+            setStatus("Cancelled");
     }
 }
 
@@ -257,9 +277,8 @@ static float quadSignedArea(const float* sx, const float* sy)
 
 bool Editor::pickFace(const Viewport& vp, int px, int py, int& outObj, int& outFace)
 {
-    // later objects draw on top, so search back-to-front. within an object,
-    // front and back faces overlap in ortho (no depth), so pick the front one
-    // by winding rather than the first in mesh order.
+    // search back-to-front (later objects draw on top). ortho has no depth, so
+    // resolve front/back overlap by winding, not mesh order.
     for (int o = (int)scene.objects.size() - 1; o >= 0; o--)
     {
         const Mesh& m = scene.objects[o];
@@ -385,6 +404,22 @@ void Editor::handleTouchDown(int px, int py)
         shapeMenuOpen = false;
         return;
     }
+    // export submenu sits over the file menu, so it eats taps first; anywhere
+    // outside its items dismisses both
+    if (exportMenuOpen)
+    {
+        for (int i = 0; i < kNumExport; i++)
+            if (exportMenu[i].contains(px, py))
+            {
+                pendingFileOp = i == 0 ? FileOp::ExportObj : FileOp::ExportStl;
+                exportMenuOpen = false;
+                fileMenuOpen = false;
+                return;
+            }
+        exportMenuOpen = false;
+        fileMenuOpen = false;
+        return;
+    }
     if (fileMenuOpen)
     {
         for (int i = 0; i < kNumMenu; i++)
@@ -394,6 +429,11 @@ void Editor::handleTouchDown(int px, int py)
                     pendingFileOp = FileOp::Save;
                 else if (i == 1)
                     pendingFileOp = FileOp::Load;
+                else if (i == 2)
+                {
+                    exportMenuOpen = true; // fly out the format submenu, keep this menu open
+                    return;
+                }
                 else
                     wantQuit = true;
                 fileMenuOpen = false;
@@ -578,9 +618,8 @@ void Editor::handleTouchDown(int px, int py)
     pressInViewport = true;
     const int vpIndex = (int)(vp - viewports);
 
-    // extrude just ran: this drag moves the caps directly (no re-pick needed,
-    // since they're edge-on in the view you extrude along). one undo with the
-    // extrude by reusing its snapshot.
+    // extrude just ran: move the caps directly (edge-on here, so a re-pick fails),
+    // reusing its snapshot for one undo.
     if (mode == EditMode::Edit && grabSelection)
     {
         grabSelection = false;

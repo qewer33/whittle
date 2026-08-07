@@ -18,7 +18,7 @@ static void bindVertexBuffer(void* vbo)
 {
     C3D_BufInfo* bufInfo = C3D_GetBufInfo();
     BufInfo_Init(bufInfo);
-    // perm 0x210: slot0->v0, slot1->v1, slot2->v2; must match AttrInfo
+    // perm 0x210: slot0=v0, slot1=v1, slot2=v2; must match AttrInfo
     BufInfo_Add(bufInfo, vbo, kVertexSize, 3, 0x210);
 }
 
@@ -30,7 +30,7 @@ static void colorToFloats(u32 color, float* out)
     out[3] = (color & 0xFF) / 255.0f;
 }
 
-// 0xRRGGBBAA -> PICA texture texel order (ABGR bytes, unlike the framebuffer)
+// 0xRRGGBBAA to PICA texture texel order (ABGR bytes, unlike the framebuffer)
 static u32 toTexel(u32 rgba)
 {
     const u32 r = (rgba >> 24) & 0xFF, g = (rgba >> 16) & 0xFF;
@@ -214,9 +214,8 @@ static float faceShade(const Vec3& p0, const Vec3& p1, const Vec3& p2)
     return s > 1.0f ? 1.0f : s;
 }
 
-// draws the flat or the textured faces of a mesh; caller sets the projection
-// uniform. shared by the preview and the ortho views. shade bakes flat lighting
-// into the vertex color.
+// draws a mesh's flat or textured faces; caller sets the projection uniform.
+// shared by preview and ortho views. shade bakes flat lighting into the color.
 void Renderer::drawFaceSubset(const Mesh& mesh, bool textured, GPU_CULLMODE cull,
                               bool depthTest, bool shade)
 {
@@ -298,18 +297,16 @@ void Renderer::drawFaceSubset(const Mesh& mesh, bool textured, GPU_CULLMODE cull
 
 void Renderer::drawSolid(const Mesh& mesh, bool shade)
 {
-    // double-sided: the depth buffer sorts overlap, so open shells (a deleted
-    // face) show their inner walls in-color instead of culling to background.
-    // closed solids look identical since the near face wins the depth test.
+    // double-sided: depth sorts the overlap, so open shells (a deleted face) show
+    // their inner walls instead of the background. closed solids look the same.
     drawFaceSubset(mesh, false, GPU_CULL_NONE, true, shade);
     drawFaceSubset(mesh, true, GPU_CULL_NONE, true, shade);
 }
 
 void Renderer::drawFaces(const Mesh& mesh, const C3D_Mtx& mvp, GPU_CULLMODE cull)
 {
-    // ortho matrix now carries real depth (see Viewport::matrix), so the depth
-    // buffer sorts faces like the preview. callers pass GPU_CULL_NONE to render
-    // both sides (open shells show their far walls through the opening).
+    // ortho matrix carries real depth (see Viewport::matrix), so faces sort like
+    // the preview. GPU_CULL_NONE renders both sides (open shells show far walls).
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLocProj, &mvp);
     drawFaceSubset(mesh, false, cull, true, false); // ortho stays flat full-color
     drawFaceSubset(mesh, true, cull, true, false);
@@ -473,10 +470,8 @@ static const float kLetY[3][4] = {
 static const float kLetZ[3][4] = {
     {-0.4f, 0.5f, 0.4f, 0.5f}, {0.4f, 0.5f, -0.4f, -0.5f}, {-0.4f, -0.5f, 0.4f, -0.5f}};
 
-// Small XYZ axis indicator in the bottom-left of the preview, placed in view
-// space (fixed offset from the camera) so it holds a constant screen size and
-// position. Drawn orthographic so the axes stay parallel to the model's instead
-// of skewing toward the screen corner. Depth-off, so it draws on top.
+// XYZ axis indicator in the preview's bottom-left. view-space anchored for a
+// constant size; orthographic so the axes don't skew; depth-off, drawn on top.
 void Renderer::drawGizmo(const Camera& camera)
 {
     const Vec3 e = camera.eye();

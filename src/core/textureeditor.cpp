@@ -227,9 +227,8 @@ void TextureEditor::clearSheet()
     scene.textureDirty = true;
 }
 
-// lay out every textured face into a uniform grid on the shared sheet, so each
-// gets its own paintable slot. slot count adapts to the face count; slot edges
-// snap to the texel grid. callers snapshot first.
+// pack textured faces into a uniform grid on the sheet, one slot each. grid
+// adapts to face count, slots snap to texels. callers snapshot first.
 void TextureEditor::autoLayout()
 {
     int n = 0;

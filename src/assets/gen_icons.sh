@@ -47,6 +47,7 @@ icons=(
   "34_eraser:eraser"
   "35_more:ellipsis-vertical"
   "36_back:arrow-left"
+  "37_export:upload"
 )
 
 tmp="$(mktemp -d)"

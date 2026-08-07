@@ -38,6 +38,8 @@ enum class FileOp
     None,
     Save,
     Load,
+    ExportObj,
+    ExportStl,
 };
 
 // interaction layer over a Scene: input, picking, transforms, toolbar, popups.
@@ -46,9 +48,10 @@ struct Editor
 {
     static constexpr int kNumShapes = 5; // cube, sphere, pyramid, cylinder, plane
     static constexpr int kNumModes = 4;  // object, model, paint, texture
-    static constexpr int kNumMenu = 3;   // save, load, exit
+    static constexpr int kNumMenu = 4;   // save, load, export, exit
     static constexpr int kNumView = 4;   // wireframe, faces, flip, shading
     static constexpr int kNumTexActions = 2; // texture all, untexture all
+    static constexpr int kNumExport = 2; // obj, stl
 
     Editor();
 
@@ -110,11 +113,13 @@ struct Editor
     bool fileMenuOpen = false;
     bool viewMenuOpen = false;
     bool texActionMenuOpen = false; // texture-mode overflow (texture/untexture all)
+    bool exportMenuOpen = false;    // export format submenu (obj/stl)
     Rect modeMenu[kNumModes];
     Rect shapeMenu[kNumShapes];
     Rect fileMenu[kNumMenu];
     Rect viewMenu[kNumView];
     Rect texActionMenu[kNumTexActions];
+    Rect exportMenu[kNumExport];
 
     bool wantQuit = false; // set by Exit, main loop breaks on it
 
