@@ -3,6 +3,7 @@
 #include <3ds.h>
 #include "scene.h"
 #include "rect.h"
+#include "layout.h"
 #include "textureeditor.h"
 #include "projectbrowser.h"
 #include "palette.h"
@@ -165,7 +166,7 @@ struct Editor
         }
         return 0;
     }
-    Rect subSegRect(int i) const { return segCell(i, subSegCount()); }
+    Rect subSegRect(int i) const { return layout::segCell(i, subSegCount()); }
 
     void handleKeys(u32 kDown);
     void handleTouchDown(int px, int py);

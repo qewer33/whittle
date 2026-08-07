@@ -1,6 +1,7 @@
 #include "textureeditor.h"
 #include "palette.h"
 #include "icons.h"
+#include "layout.h"
 #include <algorithm>
 #include <math.h>
 
@@ -22,8 +23,8 @@ static bool pointInTri(float px, float py, float ax, float ay, float bx,
 
 void TextureEditor::layout()
 {
-    const int TB = 20, BB = 20, bw = 30;
-    const int by = 240 - BB;
+    const int bw = 30, BB = layout::kBarH;
+    const int by = layout::kBottomBarY;
     btnTexMode = {0, by, 84, BB};
     // paint: brush/fill/eyedropper are the centered segmented switch (segCell),
     // brush size sits left of the far-right color button (owned by Editor)
@@ -35,17 +36,15 @@ void TextureEditor::layout()
     texModeMenu.setup(btnTexMode, widgets::Placement::Above, widgets::Align::Start, 90,
                       {{Icon_Paint, "Paint"}, {Icon_Move, "UV"}});
 
-    (void)TB;
     fitCanvas();
 }
 
 void TextureEditor::fitCanvas()
 {
-    const int TB = 20, BB = 20;
-    const float area = (float)(240 - BB - TB);
+    const float area = (float)layout::kContentH;
     canvasScale = area / Scene::kTexSize;
     canvasX = (320 - Scene::kTexSize * canvasScale) / 2.0f;
-    canvasY = TB + (area - Scene::kTexSize * canvasScale) / 2.0f;
+    canvasY = layout::kContentY + (area - Scene::kTexSize * canvasScale) / 2.0f;
 }
 
 bool TextureEditor::canvasTexel(int px, int py, int& tx, int& ty) const
@@ -299,7 +298,7 @@ void TextureEditor::handleTouchDown(int px, int py)
     const bool uv = texMode == TexMode::Uv;
     if (!uv) // brush / fill / eyedropper segmented switch
         for (int i = 0; i < 3; i++)
-            if (segCell(i, 3).contains(px, py)) { texTool = (TexTool)i; return; }
+            if (layout::segCell(i, 3).contains(px, py)) { texTool = (TexTool)i; return; }
     if (!uv && btnBrushSize.contains(px, py)) { brushMenuOpen = true; return; }
     if (uv && btnAutoLayout.contains(px, py)) { scene.snapshot(); autoLayout(); return; }
     if (uv && btnUvReset.contains(px, py))

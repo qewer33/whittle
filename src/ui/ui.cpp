@@ -2,6 +2,8 @@
 #include "icons.h"
 #include "palette.h"
 #include "uidraw.h"
+#include "layout.h"
+#include "widgets/bar.h"
 #include <citro2d.h>
 #include <cstdio>
 #include <string>
@@ -61,7 +63,7 @@ namespace
     {
         for (int i = 0; i < n; i++)
         {
-            const Rect r = segCell(i, n);
+            const Rect r = layout::segCell(i, n);
             const bool on = (i == active);
             C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(on ? kActiveBg : kItemBg));
             outline(r.x, r.y, r.w, r.h, kBorderCol);
@@ -130,14 +132,14 @@ namespace
             browserText("No projects", 132.0f, 108.0f, kIconDim);
 
         // header
-        C2D_DrawRectSolid(0, 0, 0.0f, 320, ProjectBrowser::kHeaderH, conv(kBarBg));
+        widgets::Bar{{0, 0, 320, ProjectBrowser::kHeaderH}}.draw();
         icons::draw(Icon_Load, 8, (ProjectBrowser::kHeaderH - kIcon) / 2.0f, kIcon, kIconIdle);
         textLeft(&browserLabels[0], browserLabelH[0], 8 + kIcon + 4, 0, ProjectBrowser::kHeaderH);
         iconTextBtn(b.btnBack(), Icon_Back, &browserLabels[1], browserLabelH[1], true);
 
         // footer actions
         const int fy = 240 - ProjectBrowser::kFooterH;
-        C2D_DrawRectSolid(0, fy, 0.0f, 320, ProjectBrowser::kFooterH, conv(kBarBg));
+        widgets::Bar{{0, fy, 320, ProjectBrowser::kFooterH}}.draw();
         const bool hasSel = b.selected >= 0;
         iconTextBtn(b.btnNew(), Icon_Plus, &browserLabels[2], browserLabelH[2], true);
         iconTextBtn(b.btnDelete(), Icon_Trash, &browserLabels[3], browserLabelH[3], hasSel);
@@ -215,7 +217,7 @@ namespace ui
             return;
         }
 
-        const int topH = editor.btnMenu.y + editor.btnMenu.h;
+        const int topH = layout::kBarH;
         const Rect& bm = editor.btnMode;
         const int modeIdx = (int)editor.mode;
 
@@ -301,8 +303,8 @@ namespace ui
         }
 
         // bar backgrounds
-        C2D_DrawRectSolid(0, 0, 0.0f, 320, topH, conv(kBarBg));
-        C2D_DrawRectSolid(0, bm.y, 0.0f, 320, bm.h, conv(kBarBg));
+        widgets::Bar{layout::topBar()}.draw();
+        widgets::Bar{layout::bottomBar()}.draw();
 
         // top bar. left corner: 3D/2D workspace switch (labeled, shows current
         // workspace, tap flips). right corner: hamburger menu.
@@ -389,7 +391,8 @@ namespace ui
             // plus the view dividers, one width centered on each edge.
             const u32 bc = conv(kBarBg);
             const int G = 3;
-            const int ax0 = 0, ay0 = topH, aw = 320, ah = bm.y - topH;
+            const Rect area = layout::content();
+            const int ax0 = area.x, ay0 = area.y, aw = area.w, ah = area.h;
             C2D_DrawRectSolid(ax0, ay0, 0.0f, aw, G, bc);          // top
             C2D_DrawRectSolid(ax0, ay0 + ah - G, 0.0f, aw, G, bc); // bottom
             C2D_DrawRectSolid(ax0, ay0, 0.0f, G, ah, bc);          // left
