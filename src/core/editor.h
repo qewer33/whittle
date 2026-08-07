@@ -11,6 +11,7 @@
 #include "viewport.h"
 #include "widgets/menu.h"
 #include "widgets/button.h"
+#include "widgets/toolswitch.h"
 
 // Paint-mode tool (segmented switch)
 enum class PaintTool
@@ -153,20 +154,8 @@ struct Editor
     bool hasUndo() const { return scene.hasUndo(); }
     bool hasRedo() const { return scene.hasRedo(); }
 
-    // segmented sub-switch: number of cells for the current mode, and the rect
-    // for cell i (shared centered-pill geometry, see segCell)
-    int subSegCount() const
-    {
-        switch (mode)
-        {
-        case EditMode::Object: return 3; // move / rotate / scale
-        case EditMode::Edit: return 3;   // vertex / edge / face
-        case EditMode::Paint: return 2;  // brush / eyedropper
-        case EditMode::Texture: return 2; // texture / untexture
-        }
-        return 0;
-    }
-    Rect subSegRect(int i) const { return layout::segCell(i, subSegCount()); }
+    // per-mode segmented tool switch, centered in the bottom bar
+    widgets::ToolSwitch transformSwitch, subLevelSwitch, paintSwitch, texSwitch;
 
     void handleKeys(u32 kDown);
     void handleTouchDown(int px, int py);

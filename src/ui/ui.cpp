@@ -21,13 +21,6 @@ namespace
     const Icon kModeIcons[Editor::kNumModes] = {
         Icon_Box, Icon_Pencil, Icon_Paint, Icon_Texture};
     const Icon kTexModeIcons[TextureEditor::kNumTexModes] = {Icon_Paint, Icon_Move};
-    // segmented sub-switch glyphs
-    const Icon kTransformIcons[3] = {Icon_Move, Icon_Rotate, Icon_Scale};
-    const Icon kSubLevelIcons[3] = {Icon_Vertex, Icon_Edge, Icon_Square};
-    const Icon kTexToolIcons[3] = {Icon_Paint, Icon_Bucket, Icon_Pipette};
-    const Icon kPaintIcons[2] = {Icon_Paint, Icon_Pipette};      // brush, eyedropper
-    const Icon kFaceTexIcons[2] = {Icon_Texture, Icon_Eraser};   // texture, untexture
-
     C2D_TextBuf textBuf = nullptr;
     C2D_TextBuf toastBuf = nullptr; // reparsed each frame for the toast
     C2D_TextBuf brushBuf = nullptr; // reparsed each frame for the brush-size number
@@ -55,20 +48,6 @@ namespace
             float w, hh;
             C2D_TextGetDimensions(&txt[i], kTextScale, kTextScale, &w, &hh);
             h[i] = hh;
-        }
-    }
-
-    // segmented switch: floating inset pill, cells centered in the bar
-    void drawSegmented(const Icon* ics, int n, int active)
-    {
-        for (int i = 0; i < n; i++)
-        {
-            const Rect r = layout::segCell(i, n);
-            const bool on = (i == active);
-            C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(on ? kActiveBg : kItemBg));
-            outline(r.x, r.y, r.w, r.h, kBorderCol);
-            icons::draw(ics[i], r.x + (r.w - kIcon) / 2.0f, r.y + (r.h - kIcon) / 2.0f,
-                        kIcon, on ? kIconActive : kIconIdle);
         }
     }
 
@@ -333,15 +312,15 @@ namespace ui
             editor.btnMode.drawLabeled(kModeIcons[modeIdx], &modeLabels[modeIdx],
                                        modeLabelH[modeIdx], editor.modeMenu.open);
 
-            // segmented sub-switch for the current mode
+            // segmented tool switch for the current mode
             if (editor.mode == EditMode::Object)
-                drawSegmented(kTransformIcons, 3, (int)editor.transformTool);
+                editor.transformSwitch.draw((int)editor.transformTool);
             else if (editor.mode == EditMode::Edit)
-                drawSegmented(kSubLevelIcons, 3, (int)editor.subLevel);
+                editor.subLevelSwitch.draw((int)editor.subLevel);
             else if (editor.mode == EditMode::Paint)
-                drawSegmented(kPaintIcons, 2, (int)editor.paintTool);
+                editor.paintSwitch.draw((int)editor.paintTool);
             else if (editor.mode == EditMode::Texture)
-                drawSegmented(kFaceTexIcons, 2, (int)editor.faceTexTool);
+                editor.texSwitch.draw((int)editor.faceTexTool);
 
             // Edit/Face verb buttons (right side)
             if (editor.mode == EditMode::Edit && editor.subLevel == SubLevel::Face)
@@ -364,7 +343,7 @@ namespace ui
             if (editor.tex.texMode == TexMode::Paint)
             {
                 // brush / fill / eyedropper as the centered segmented switch
-                drawSegmented(kTexToolIcons, 3, (int)editor.tex.texTool);
+                editor.tex.toolSwitch.draw((int)editor.tex.texTool);
                 // brush size: a white square sized to the brush (capped to the
                 // button), opens the size popup
                 const Rect& bs = editor.tex.btnBrushSize;

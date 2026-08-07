@@ -26,8 +26,8 @@ void TextureEditor::layout()
     const int bw = 30, BB = layout::kBarH;
     const int by = layout::kBottomBarY;
     btnTexMode = {0, by, 84, BB};
-    // paint: brush/fill/eyedropper are the centered segmented switch (segCell),
-    // brush size sits left of the far-right color button (owned by Editor)
+    // paint: brush/fill/eyedropper are the centered toolSwitch, brush size sits
+    // left of the far-right color button (owned by Editor)
     btnBrushSize = {320 - 2 * bw - 4, by, bw, BB};
     // uv tools, right-aligned: auto-layout, fit
     btnAutoLayout = {320 - 2 * bw - 4, by, bw, BB};
@@ -35,6 +35,7 @@ void TextureEditor::layout()
 
     texModeMenu.setup(btnTexMode, widgets::Placement::Above, widgets::Align::Start, 90,
                       {{Icon_Paint, "Paint"}, {Icon_Move, "UV"}});
+    toolSwitch.setup({Icon_Paint, Icon_Bucket, Icon_Pipette});
 
     fitCanvas();
 }
@@ -297,8 +298,10 @@ void TextureEditor::handleTouchDown(int px, int py)
     if (btnTexMode.contains(px, py)) { texModeMenu.open = true; return; }
     const bool uv = texMode == TexMode::Uv;
     if (!uv) // brush / fill / eyedropper segmented switch
-        for (int i = 0; i < 3; i++)
-            if (layout::segCell(i, 3).contains(px, py)) { texTool = (TexTool)i; return; }
+    {
+        const int c = toolSwitch.handle(px, py);
+        if (c >= 0) { texTool = (TexTool)c; return; }
+    }
     if (!uv && btnBrushSize.contains(px, py)) { brushMenuOpen = true; return; }
     if (uv && btnAutoLayout.contains(px, py)) { scene.snapshot(); autoLayout(); return; }
     if (uv && btnUvReset.contains(px, py))

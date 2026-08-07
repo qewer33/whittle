@@ -28,6 +28,7 @@ add_executable(whittle
     src/ui/uidraw.cpp
     src/ui/widgets/menu.cpp
     src/ui/widgets/button.cpp
+    src/ui/widgets/toolswitch.cpp
 )
 
 ctr_add_shader_library(

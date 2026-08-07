@@ -68,8 +68,7 @@ Editor::Editor()
     btnMenu = {320 - bw, 0, bw, TB};        // hamburger, top-right corner
     btnView = {320 - 2 * bw - 4, 0, bw, TB}; // view toggles popup (3D workspace)
 
-    // bottom bar: mode (icon+text) left, the segmented sub-switch is centered
-    // and computed on the fly (subSegRect)
+    // bottom bar: mode button (icon+text) left, the tool switch centered
     const int by = 240 - BB;
     btnMode = {0, by, 84, BB};
     // edit/face verbs, right side: subdivide, extrude
@@ -100,6 +99,12 @@ Editor::Editor()
                    false); // toggles: stay open on pick
     texActionMenu.setup(btnTexMenu, Placement::Above, Align::End, 112,
                         {{Icon_Texture, "Texture All"}, {Icon_Eraser, "Untexture All"}});
+
+    // per-mode tool switches (centered pill in the bottom bar)
+    transformSwitch.setup({Icon_Move, Icon_Rotate, Icon_Scale});
+    subLevelSwitch.setup({Icon_Vertex, Icon_Edge, Icon_Square});
+    paintSwitch.setup({Icon_Paint, Icon_Pipette});
+    texSwitch.setup({Icon_Texture, Icon_Eraser});
 }
 
 void Editor::setStatus(const char* m)
@@ -512,20 +517,27 @@ void Editor::handleTouchDown(int px, int py)
 
     // bottom bar: model controls
     if (btnMode.contains(px, py)) { closeMenus(); modeMenu.open = true; return; }
-    // segmented sub-switch, per mode
-    for (int i = 0; i < subSegCount(); i++)
-        if (subSegRect(i).contains(px, py))
-        {
-            if (mode == EditMode::Object)
-                transformTool = (TransformTool)i;
-            else if (mode == EditMode::Edit)
-                subLevel = (SubLevel)i;
-            else if (mode == EditMode::Paint)
-                paintTool = (PaintTool)i;
-            else if (mode == EditMode::Texture)
-                faceTexTool = (FaceTexTool)i;
-            return;
-        }
+    // segmented tool switch, per mode
+    if (mode == EditMode::Object)
+    {
+        const int c = transformSwitch.handle(px, py);
+        if (c >= 0) { transformTool = (TransformTool)c; return; }
+    }
+    else if (mode == EditMode::Edit)
+    {
+        const int c = subLevelSwitch.handle(px, py);
+        if (c >= 0) { subLevel = (SubLevel)c; return; }
+    }
+    else if (mode == EditMode::Paint)
+    {
+        const int c = paintSwitch.handle(px, py);
+        if (c >= 0) { paintTool = (PaintTool)c; return; }
+    }
+    else if (mode == EditMode::Texture)
+    {
+        const int c = texSwitch.handle(px, py);
+        if (c >= 0) { faceTexTool = (FaceTexTool)c; return; }
+    }
 
     // Edit/Face verb: extrude the selected faces (keeps them selected as caps,
     // and arms a grab so the next viewport drag pulls the caps out)
