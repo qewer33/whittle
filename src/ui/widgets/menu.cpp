@@ -51,12 +51,6 @@ namespace widgets
     void Menu::draw(const bool* on) const
     {
         const int n = count();
-        const Rect first = itemRect(0);
-        const Rect last = itemRect(n - 1);
-        const int panX = first.x - 2, panY = first.y - 2;
-        const int panW = first.w + 4, panH = last.y + last.h - first.y + 4;
-        C2D_DrawRectSolid(panX, panY, 0.0f, panW, panH, conv(kPanelBg));
-        outline(panX, panY, panW, panH, kBorderCol);
         for (int i = 0; i < n; i++)
         {
             const Rect r = itemRect(i);

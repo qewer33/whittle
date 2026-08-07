@@ -43,6 +43,6 @@ namespace widgets
         std::vector<Icon> icons_;
         std::vector<C2D_Text> labels_;
         std::vector<float> labelH_;
-        static constexpr int kItemH = 30;
+        static constexpr int kItemH = 26;
     };
 }

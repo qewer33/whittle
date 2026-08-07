@@ -366,23 +366,17 @@ namespace ui
         // model viewport chrome (the canvas is drawn earlier, behind the bars)
         if (editor.is3D())
         {
-            // gutters in the toolbar color: outer frame around the ortho area
-            // plus the view dividers, one width centered on each edge.
-            const u32 bc = conv(kBarBg);
-            const int G = 3;
-            const Rect area = layout::content();
-            const int ax0 = area.x, ay0 = area.y, aw = area.w, ah = area.h;
-            C2D_DrawRectSolid(ax0, ay0, 0.0f, aw, G, bc);          // top
-            C2D_DrawRectSolid(ax0, ay0 + ah - G, 0.0f, aw, G, bc); // bottom
-            C2D_DrawRectSolid(ax0, ay0, 0.0f, G, ah, bc);          // left
-            C2D_DrawRectSolid(ax0 + aw - G, ay0, 0.0f, G, ah, bc); // right
+            // ortho view dividers
             if (editor.maxView < 0)
             {
+                const u32 bc = conv(kBarBg);
+                const int G = 3;
+                const Rect area = layout::content();
                 const Viewport& v0 = editor.viewports[0];
-                const int divY = v0.y + v0.h;                                  // rows
-                const int divX = editor.viewports[1].x + editor.viewports[1].w; // cols
-                C2D_DrawRectSolid(ax0, divY - G / 2, 0.0f, aw, G, bc);
-                C2D_DrawRectSolid(divX - G / 2, divY, 0.0f, G, ay0 + ah - divY, bc);
+                const int divY = v0.y + v0.h;
+                const int divX = editor.viewports[1].x + editor.viewports[1].w;
+                C2D_DrawRectSolid(area.x, divY - G / 2, 0.0f, area.w, G, bc);
+                C2D_DrawRectSolid(divX - G / 2, divY, 0.0f, G, area.y + area.h - divY, bc);
             }
 
             for (int i = 0; i < 3; i++)

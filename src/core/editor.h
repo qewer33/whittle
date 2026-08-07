@@ -106,7 +106,7 @@ struct Editor
     AppScreen screen = AppScreen::Editor;
     ProjectBrowser browser{scene, screen};
 
-    bool wireframe = true; // wireframe overlay on the preview
+    bool wireframe = false; // wireframe overlay on the preview
     bool showFaces = true; // filled faces in the ortho views
     bool flipViews = false; // view ortho projections from the far side
     bool shading = true;   // soft flat shading on the preview
