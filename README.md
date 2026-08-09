@@ -49,6 +49,19 @@ whittle allows you to *save and load* models you've created via the *Save* and *
 
 whittle can currently export models in **Wavefront OBJ (.obj)** and **STL (.stl)** formats. OBJ files are exported together with material (.mtl) and texture (.tga) files. STL only contain the 3D model itself with no colors or textures as STL doesn't support them. **OBJ is recommended for importing into other 3D modelling software such as Blender** while **STL is recommended for 3D printing**. The exported files will be inside the `/whittle/exports/` folder in your SD card root directory.
 
+### Keybinds
+
+| Keybind | Action |
+| --- | --- |
+| Circle Pad | Orbit model preview |
+| D-Pad | Pan view |
+| X | Zoom in |
+| Y | Zoom out |
+| C-Stick | Smooth zoom (New 3DS) |
+| A | Flip ortho views |
+| B | Undo |
+| Start | Quit |
+
 ## Development
 
 Written in C++ using devkitpro.

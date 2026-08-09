@@ -13,75 +13,74 @@ Vec3 Camera::eye() const
     };
 }
 
-void Camera::update(const circlePosition& pad, u32 held, float dt)
+// deadzone plus normalize a raw stick reading to -1..1
+static float stickAxis(float raw)
+{
+    static constexpr float kDeadzone = 12.0f;
+    return fabsf(raw) > kDeadzone
+               ? copysignf((fabsf(raw) - kDeadzone) / (CIRCLE_PAD_MAX - kDeadzone), raw)
+               : 0.0f;
+}
+
+void Camera::orbit(const circlePosition& pad, float dt)
+{
+    if (dt > 0.1f)
+        dt = 0.1f;
+    yaw -= stickAxis((float)pad.dx) * kOrbitSpeed * dt;
+    pitch += stickAxis((float)pad.dy) * kOrbitSpeed * dt;
+    if (pitch > kMaxPitch)
+        pitch = kMaxPitch;
+    if (pitch < -kMaxPitch)
+        pitch = -kMaxPitch;
+}
+
+void Camera::update(const circlePosition& pad, const circlePosition& cstick, u32 held, float dt)
 {
     if (dt > 0.1f)
         dt = 0.1f;
 
-    // circle pad deadzone
-    static constexpr float kDeadzone = 12.0f;
-    const float rawX = (float)pad.dx;
-    const float rawY = (float)pad.dy;
-    float nx = 0.0f;
-    float ny = 0.0f;
-    if (fabsf(rawX) > kDeadzone)
-        nx = copysignf((fabsf(rawX) - kDeadzone) / (CIRCLE_PAD_MAX - kDeadzone), rawX);
-    if (fabsf(rawY) > kDeadzone)
-        ny = copysignf((fabsf(rawY) - kDeadzone) / (CIRCLE_PAD_MAX - kDeadzone), rawY);
+    orbit(pad, dt); // circle pad
 
-    if (held & KEY_L)
+    // dpad pans the target in the camera screen plane
+    float panX = 0.0f, panY = 0.0f;
+    if (held & KEY_DLEFT)
+        panX -= 1.0f;
+    if (held & KEY_DRIGHT)
+        panX += 1.0f;
+    if (held & KEY_DUP)
+        panY += 1.0f;
+    if (held & KEY_DDOWN)
+        panY -= 1.0f;
+    if (panX != 0.0f || panY != 0.0f)
     {
-        // pan: move the target in the camera plane
         const Vec3 e = eye();
-        const Vec3 fwd = {
-            target.x - e.x,
-            target.y - e.y,
-            target.z - e.z,
-        };
+        const Vec3 fwd = {target.x - e.x, target.y - e.y, target.z - e.z};
         const float flen = sqrtf(fwd.x * fwd.x + fwd.y * fwd.y + fwd.z * fwd.z);
         const Vec3 fn = {fwd.x / flen, fwd.y / flen, fwd.z / flen};
-
-        // right = normalize(cross(fn, worldUp))
         Vec3 right = {-fn.z, 0.0f, fn.x};
         const float rlen = sqrtf(right.x * right.x + right.y * right.y + right.z * right.z);
         right = {right.x / rlen, right.y / rlen, right.z / rlen};
-
         const Vec3 up = {
             right.y * fn.z - right.z * fn.y,
             right.z * fn.x - right.x * fn.z,
             right.x * fn.y - right.y * fn.x,
         };
-
         const float s = kPanSpeed * distance * dt;
-        target.x += right.x * nx * s + up.x * ny * s;
-        target.y += right.y * nx * s + up.y * ny * s;
-        target.z += right.z * nx * s + up.z * ny * s;
-    }
-    else if (held & KEY_R)
-    {
-        // circle pad zoom
-        distance *= expf(-ny * kZoomSpeed * dt);
-        if (distance < kMinDistance)
-            distance = kMinDistance;
-        if (distance > kMaxDistance)
-            distance = kMaxDistance;
-    }
-    else
-    {
-        // orbit
-        yaw -= nx * kOrbitSpeed * dt;
-        pitch += ny * kOrbitSpeed * dt;
-        if (pitch > kMaxPitch)
-            pitch = kMaxPitch;
-        if (pitch < -kMaxPitch)
-            pitch = -kMaxPitch;
+        target.x += right.x * panX * s + up.x * panY * s;
+        target.y += right.y * panX * s + up.y * panY * s;
+        target.z += right.z * panX * s + up.z * panY * s;
     }
 
-    // dpad zoom
-    if (held & (KEY_DUP | KEY_DDOWN))
+    // X/Y zoom at a fixed rate, C-stick zooms smoothly (New 3DS)
+    float zoom = 0.0f;
+    if (held & KEY_X)
+        zoom += 1.0f;
+    if (held & KEY_Y)
+        zoom -= 1.0f;
+    zoom += stickAxis((float)cstick.dy);
+    if (zoom != 0.0f)
     {
-        const float dz = (held & KEY_DUP) ? 1.0f : -1.0f;
-        distance *= expf(-dz * kZoomSpeed * dt);
+        distance *= expf(-zoom * kZoomSpeed * dt);
         if (distance < kMinDistance)
             distance = kMinDistance;
         if (distance > kMaxDistance)

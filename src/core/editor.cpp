@@ -337,15 +337,9 @@ void Editor::handleKeys(u32 kDown)
 {
     if (screen == AppScreen::Browser)
         return;
-    if (kDown & KEY_X)
-        wireframe = !wireframe;
-    if (kDown & KEY_Y)
-        deleteSelected();
     if (kDown & KEY_B)
         scene.undo();
     if (kDown & KEY_A)
-        showFaces = !showFaces;
-    if (kDown & (KEY_DLEFT | KEY_DRIGHT))
     {
         flipViews = !flipViews;
         applyFlip();

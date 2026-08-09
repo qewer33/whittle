@@ -13,6 +13,7 @@ int main()
 {
     gfxInitDefault();
     gfxSet3D(true); // stereoscopic top screen, driven by the 3D slider
+    irrstInit();    // C-stick and ZL/ZR (New 3DS)
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
 
@@ -34,6 +35,7 @@ int main()
     while (aptMainLoop())
     {
         hidScanInput();
+        irrstScanInput();
         const u32 kDown = hidKeysDown();
         const u32 kUp = hidKeysUp();
         if ((kDown & KEY_START) || editor.wantQuit)
@@ -61,13 +63,18 @@ int main()
 
         circlePosition pad;
         hidCircleRead(&pad);
+        circlePosition cstick;
+        irrstCstickRead(&cstick);
         if (editor.screen == AppScreen::Browser)
             editor.browser.update(dt);
         else if (editor.is2D())
-            editor.tex.navCanvas(pad, hidKeysHeld());
+        {
+            camera.orbit(pad, dt); // circle pad still orbits the preview
+            editor.tex.navCanvas(cstick, hidKeysHeld());
+        }
         else
         {
-            camera.update(pad, hidKeysHeld(), dt);
+            camera.update(pad, cstick, hidKeysHeld(), dt);
             editor.syncZoom(camera.distance);
         }
 
@@ -115,6 +122,7 @@ int main()
     renderer.exit();
     C2D_Fini();
     C3D_Fini();
+    irrstExit();
     gfxExit();
     return 0;
 }

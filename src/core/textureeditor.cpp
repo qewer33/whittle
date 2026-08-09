@@ -195,20 +195,28 @@ bool TextureEditor::pickUvHandle(int px, int py)
     return false;
 }
 
-void TextureEditor::navCanvas(const circlePosition& pad, u32 held)
+void TextureEditor::navCanvas(const circlePosition& cstick, u32 held)
 {
     static constexpr float kDead = 20.0f, kPan = 4.0f, kZoom = 1.04f;
-    if (fabsf((float)pad.dx) > kDead)
-        canvasX -= (pad.dx / 156.0f) * kPan;
-    if (fabsf((float)pad.dy) > kDead)
-        canvasY += (pad.dy / 156.0f) * kPan;
 
-    // zoom around the canvas-area center (L/R or D-pad up/down)
+    // dpad pans the canvas
+    if (held & KEY_DRIGHT)
+        canvasX -= kPan;
+    if (held & KEY_DLEFT)
+        canvasX += kPan;
+    if (held & KEY_DUP)
+        canvasY += kPan;
+    if (held & KEY_DDOWN)
+        canvasY -= kPan;
+
+    // X/Y zoom at a fixed rate, C-stick zooms smoothly (New 3DS), around the center
     float factor = 1.0f;
-    if (held & (KEY_L | KEY_DUP))
-        factor = kZoom;
-    else if (held & (KEY_R | KEY_DDOWN))
-        factor = 1.0f / kZoom;
+    if (held & KEY_X)
+        factor *= kZoom;
+    if (held & KEY_Y)
+        factor *= 1.0f / kZoom;
+    if (fabsf((float)cstick.dy) > kDead)
+        factor *= powf(kZoom, cstick.dy / 156.0f);
     if (factor != 1.0f)
     {
         const float cx = 160.0f, cy = 110.0f;

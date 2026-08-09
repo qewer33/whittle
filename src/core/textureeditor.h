@@ -74,7 +74,7 @@ struct TextureEditor
     void handleTouchMove(int px, int py);
     void handleTouchUp();
 
-    void navCanvas(const circlePosition& pad, u32 held); // circle-pad pan + L/R zoom
+    void navCanvas(const circlePosition& cstick, u32 held); // dpad pan + X/Y and C-stick zoom
     void fitCanvas();  // reset the canvas transform to fit the sheet centered
     void clearSheet(); // fill the sheet with the current color (snapshots)
     void autoLayout(); // pack textured faces into an atlas grid (no snapshot)
