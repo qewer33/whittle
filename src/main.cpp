@@ -12,6 +12,7 @@
 int main()
 {
     gfxInitDefault();
+    gfxSet3D(true); // stereoscopic top screen, driven by the 3D slider
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
 
@@ -76,22 +77,31 @@ int main()
             editor.scene.textureDirty = false;
         }
 
+        // what the top screen previews (the editor scene, or the browser's pick)
+        const bool browsing = editor.screen == AppScreen::Browser;
+        const std::vector<Mesh>& previewObjs = browsing ? editor.browser.preview : editor.scene.objects;
+        const Camera& previewCam = browsing ? editor.browser.camera : camera;
+        const bool previewWire = browsing ? false : editor.wireframe;
+        const float iod = osGet3DSliderState() * 0.7f; // eye offset, 0 when slider down
+
         renderer.beginFrame();
 
+        // top screen, one pass per eye (mono when iod is 0)
         renderer.drawOn(renderer.topTarget());
-        if (editor.screen == AppScreen::Browser)
-            renderer.drawPreview(editor.browser.preview, editor.browser.camera, false, editor.shading);
-        else
-            renderer.drawPreview(editor.scene.objects, camera, editor.wireframe, editor.shading);
+        renderer.drawPreview(previewObjs, previewCam, previewWire, editor.shading, -iod);
+        renderer.drawOn(renderer.rightTarget());
+        renderer.drawPreview(previewObjs, previewCam, previewWire, editor.shading, iod);
 
         renderer.drawOn(renderer.bottomTarget());
         if (editor.screen == AppScreen::Editor && editor.is3D())
             editor.renderViewports(renderer);
 
-        // hand it to citro2d for the UI. top screen gets the project-name
-        // overlay, bottom gets the toolbars/canvas.
+        // hand it to citro2d for the UI. both eyes get the project-name overlay
+        // (same coords = screen plane), bottom gets the toolbars/canvas.
         C2D_Prepare();
         C2D_SceneBegin(renderer.topTarget());
+        ui::drawTop(editor);
+        C2D_SceneBegin(renderer.rightTarget());
         ui::drawTop(editor);
         C2D_SceneBegin(renderer.bottomTarget());
         ui::draw(editor, renderer.texture());

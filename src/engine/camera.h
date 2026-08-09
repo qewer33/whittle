@@ -13,7 +13,7 @@ struct Camera
     Vec3 target = {0.0f, 0.0f, 0.0f};
 
     void update(const circlePosition& pad, u32 held, float dt);
-    C3D_Mtx viewProj() const;
+    C3D_Mtx viewProj(float iod = 0.0f) const; // iod = stereo eye offset (0 = mono)
     Vec3 eye() const;
 
 private:

@@ -21,12 +21,14 @@ struct Renderer
     void drawOn(C3D_RenderTarget* target);
     void endFrame();
     C3D_RenderTarget* topTarget() const { return topTarget_; }
+    C3D_RenderTarget* rightTarget() const { return rightTarget_; }
     C3D_RenderTarget* bottomTarget() const { return bottomTarget_; }
 
     // top-screen preview of every object, plus optional wireframe overlay.
-    // shading applies soft flat lighting to the filled faces.
+    // shading applies soft flat lighting to the filled faces. iod is the
+    // stereo eye offset (0 = mono).
     void drawPreview(const std::vector<Mesh>& objects, const Camera& camera,
-                     bool wireframe, bool shading);
+                     bool wireframe, bool shading, float iod = 0.0f);
 
     // citro2d clobbers the C3D state, so re-bind ours before drawing
     void bind3DState();
@@ -55,7 +57,8 @@ private:
     static constexpr int kBottomBufH = 320;
     static constexpr u32 kInitVerts = 16384; // starting vbo size, grows to fit
 
-    C3D_RenderTarget* topTarget_ = nullptr;
+    C3D_RenderTarget* topTarget_ = nullptr;   // top screen, left eye
+    C3D_RenderTarget* rightTarget_ = nullptr; // top screen, right eye (stereo)
     C3D_RenderTarget* bottomTarget_ = nullptr;
     DVLB_s* dvlb = nullptr;
     shaderProgram_s program;

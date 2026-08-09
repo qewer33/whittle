@@ -55,6 +55,11 @@ bool Renderer::init()
         return false;
     C3D_RenderTargetSetOutput(topTarget_, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 
+    rightTarget_ = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+    if (!rightTarget_)
+        return false;
+    C3D_RenderTargetSetOutput(rightTarget_, GFX_TOP, GFX_RIGHT, DISPLAY_TRANSFER_FLAGS);
+
     bottomTarget_ = C3D_RenderTargetCreate(240, 320, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
     if (!bottomTarget_)
         return false;
@@ -112,6 +117,8 @@ void Renderer::exit()
     }
     if (topTarget_)
         C3D_RenderTargetDelete(topTarget_);
+    if (rightTarget_)
+        C3D_RenderTargetDelete(rightTarget_);
     if (bottomTarget_)
         C3D_RenderTargetDelete(bottomTarget_);
 }
@@ -175,11 +182,11 @@ void Renderer::bind3DState()
 }
 
 void Renderer::drawPreview(const std::vector<Mesh>& objects, const Camera& camera,
-                           bool wireframe, bool shading)
+                           bool wireframe, bool shading, float iod)
 {
     bind3DState();
 
-    const C3D_Mtx vp = camera.viewProj();
+    const C3D_Mtx vp = camera.viewProj(iod);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLocProj, &vp);
     for (const Mesh& m : objects)

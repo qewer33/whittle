@@ -89,7 +89,7 @@ void Camera::update(const circlePosition& pad, u32 held, float dt)
     }
 }
 
-C3D_Mtx Camera::viewProj() const
+C3D_Mtx Camera::viewProj(float iod) const
 {
     const Vec3 e = eye();
 
@@ -100,12 +100,16 @@ C3D_Mtx Camera::viewProj() const
                FVec4_New(0.0f, 1.0f, 0.0f, 1.0f),
                true);
 
+    // stereo converges at the orbit target (distance away), so it sits at the
+    // screen plane. iod 0 is the plain mono projection.
     C3D_Mtx proj;
-    Mtx_PerspTilt(&proj, C3D_AngleFromDegrees(45.0f), 400.0f / 240.0f, 0.1f, 100.0f, true);
+    if (iod != 0.0f)
+        Mtx_PerspStereoTilt(&proj, C3D_AngleFromDegrees(45.0f), 400.0f / 240.0f, 0.1f, 100.0f,
+                            iod, distance, true);
+    else
+        Mtx_PerspTilt(&proj, C3D_AngleFromDegrees(45.0f), 400.0f / 240.0f, 0.1f, 100.0f, true);
 
     C3D_Mtx vp;
     Mtx_Multiply(&vp, &proj, &view);
-
-
     return vp;
 }
