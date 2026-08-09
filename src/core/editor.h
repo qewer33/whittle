@@ -178,6 +178,7 @@ private:
     static constexpr float kZoomScale = 112.5f; // scale = kZoomScale / distance
     static constexpr float kRotSnap = 0.2617993878f; // 15 deg
     static constexpr float kScaleSnap = 0.25f;
+    static constexpr float kUniformRefPx = 40.0f; // uniform-scale drag to double the size
 
     bool touching = false;
     bool pressInViewport = false;
@@ -189,10 +190,14 @@ private:
     float dragStartWx = 0.0f, dragStartWy = 0.0f;
 
     // object drag: move/rotate/scale around the centroid
+    // which gizmo handle a drag grabbed (None = free plane move on the body)
+    enum class Grab { None, Axis, Uniform, Ring };
     int pressedObject = -1;
     bool pressedObjWasSelected = false;
     bool draggingObjects = false;
     int objDragViewport = -1;
+    Grab gizmoGrab = Grab::None;
+    int gizmoAxis = -1; // world axis, valid when gizmoGrab == Axis
     Vec3 objDragPivot = {0.0f, 0.0f, 0.0f};
     std::vector<std::vector<Vec3>> objDragOrig; // per selected object
 

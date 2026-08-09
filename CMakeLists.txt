@@ -20,6 +20,7 @@ add_executable(whittle
     src/core/textureeditor.cpp
     src/core/scene.cpp
     src/core/viewrender.cpp
+    src/core/gizmo.cpp
     src/core/platform.cpp
     src/core/projectbrowser.cpp
     src/core/meshexport.cpp

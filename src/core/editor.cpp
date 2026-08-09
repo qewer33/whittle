@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "viewrender.h"
+#include "gizmo.h"
 #include "platform.h"
 #include "meshexport.h"
 #include <algorithm>
@@ -368,6 +369,8 @@ void Editor::handleTouchDown(int px, int py)
     dragSnapshotted = false;
     pressedObject = -1;
     pressedObjWasSelected = false;
+    gizmoGrab = Grab::None;
+    gizmoAxis = -1;
     draggingObjects = false;
     objDragViewport = -1;
     pressedVertObj = pressedVertIdx = -1;
@@ -701,6 +704,26 @@ void Editor::handleTouchDown(int px, int py)
     }
     else if (mode == EditMode::Object)
     {
+        // gizmo handle takes priority over object pick
+        if (!scene.selectedObjects.empty())
+        {
+            const Vec3 c = scene.selectionCentroid();
+            if (transformTool == TransformTool::Move)
+            {
+                const int axis = gizmo::moveHitAxis(*vp, c, px, py);
+                if (axis >= 0) { gizmoGrab = Grab::Axis; gizmoAxis = axis; objDragViewport = vpIndex; return; }
+            }
+            else if (transformTool == TransformTool::Scale)
+            {
+                const int h = gizmo::scaleHit(*vp, c, px, py);
+                if (h == gizmo::kUniform) { gizmoGrab = Grab::Uniform; objDragViewport = vpIndex; return; }
+                if (h >= 0) { gizmoGrab = Grab::Axis; gizmoAxis = h; objDragViewport = vpIndex; return; }
+            }
+            else if (transformTool == TransformTool::Rotate)
+            {
+                if (gizmo::rotateHitRing(*vp, c, px, py)) { gizmoGrab = Grab::Ring; objDragViewport = vpIndex; return; }
+            }
+        }
         const int hitObj = pickObject(*vp, px, py);
         if (hitObj >= 0)
         {
@@ -709,7 +732,10 @@ void Editor::handleTouchDown(int px, int py)
             if (!pressedObjWasSelected)
                 scene.selectedObjects.push_back(hitObj);
             scene.activeObject = hitObj;
-            objDragViewport = vpIndex;
+            // free plane-drag on the body is a Move-tool convenience only, rotate
+            // and scale go through their gizmo handles
+            if (transformTool == TransformTool::Move)
+                objDragViewport = vpIndex;
             return;
         }
         scene.selectedObjects.clear();
@@ -738,11 +764,17 @@ void Editor::applyObjectDrag(const Viewport& vp, float wx, float wy)
     const float pa = getAxis(objDragPivot, ax);
     const float pb = getAxis(objDragPivot, ay);
 
-    float dX = 0, dY = 0, c = 1, s = 0, sxr = 1, syr = 1;
+    float dX = 0, dY = 0, c = 1, s = 0, factor = 1;
     if (transformTool == TransformTool::Move)
     {
         dX = snapToGrid(wx - dragStartWx, kSnap);
         dY = snapToGrid(wy - dragStartWy, kSnap);
+        // gizmo arrow grabbed: constrain to that one world axis
+        if (gizmoGrab == Grab::Axis)
+        {
+            if (gizmoAxis == ax) dY = 0;
+            else if (gizmoAxis == ay) dX = 0;
+        }
     }
     else if (transformTool == TransformTool::Rotate)
     {
@@ -753,15 +785,25 @@ void Editor::applyObjectDrag(const Viewport& vp, float wx, float wy)
         c = cosf(d);
         s = sinf(d);
     }
-    else // scale, per-axis
+    else // scale: uniform (center handle) or along one axis
     {
-        const float denomX = dragStartWx - pa, denomY = dragStartWy - pb;
-        sxr = (fabsf(denomX) > 1e-3f) ? (wx - pa) / denomX : 1.0f;
-        syr = (fabsf(denomY) > 1e-3f) ? (wy - pb) / denomY : 1.0f;
-        sxr = snapToGrid(sxr, kScaleSnap);
-        syr = snapToGrid(syr, kScaleSnap);
-        if (sxr < kScaleSnap) sxr = kScaleSnap;
-        if (syr < kScaleSnap) syr = kScaleSnap;
+        if (gizmoGrab == Grab::Uniform)
+        {
+            // the center handle sits on the pivot, so grab distance is ~0 and a
+            // plain d1/d0 blows up. anchor to a fixed screen reference instead
+            const float r0 = kUniformRefPx / vp.scale;
+            const float d0 = hypotf(dragStartWx - pa, dragStartWy - pb);
+            const float d1 = hypotf(wx - pa, wy - pb);
+            factor = (d1 + r0) / (d0 + r0);
+        }
+        else
+        {
+            const float g0 = (gizmoAxis == ax) ? (dragStartWx - pa) : (dragStartWy - pb);
+            const float g1 = (gizmoAxis == ax) ? (wx - pa) : (wy - pb);
+            factor = (fabsf(g0) > 1e-3f) ? g1 / g0 : 1.0f;
+        }
+        factor = snapToGrid(factor, kScaleSnap);
+        if (factor < kScaleSnap) factor = kScaleSnap;
     }
 
     for (size_t j = 0; j < scene.selectedObjects.size(); j++)
@@ -784,10 +826,18 @@ void Editor::applyObjectDrag(const Viewport& vp, float wx, float wy)
                 setAxis(np, ax, pa + da * c - db * s);
                 setAxis(np, ay, pb + da * s + db * c);
             }
-            else
+            else if (gizmoGrab == Grab::Uniform)
             {
-                setAxis(np, ax, pa + (a - pa) * sxr);
-                setAxis(np, ay, pb + (b - pb) * syr);
+                for (int k = 0; k < 3; k++)
+                {
+                    const float pk = getAxis(objDragPivot, k);
+                    setAxis(np, k, pk + (getAxis(orig[i], k) - pk) * factor);
+                }
+            }
+            else // scale along the grabbed axis only
+            {
+                const float pg = getAxis(objDragPivot, gizmoAxis);
+                setAxis(np, gizmoAxis, pg + (getAxis(orig[i], gizmoAxis) - pg) * factor);
             }
             m.positions[i] = np;
         }
@@ -899,12 +949,16 @@ void Editor::handleTouchMove(int px, int py)
         return;
     }
 
+    // an object drag needs either a picked body (free move) or a grabbed gizmo,
+    // and a viewport to track in
+    const bool objDrag = (pressedObject >= 0 || gizmoGrab != Grab::None) && objDragViewport >= 0;
+
     const int dx = px - pressPx;
     const int dy = py - pressPy;
     if (dx * dx + dy * dy > kDragThresholdPx * kDragThresholdPx)
     {
         dragMoved = true;
-        if ((pressedObject >= 0 || pressedSub) && !dragSnapshotted)
+        if ((objDrag || pressedSub) && !dragSnapshotted)
         {
             scene.snapshot();
             dragSnapshotted = true;
@@ -925,7 +979,7 @@ void Editor::handleTouchMove(int px, int py)
         return;
     }
 
-    if (pressedObject >= 0 && objDragViewport >= 0)
+    if (objDrag)
     {
         const Viewport& vp = viewports[objDragViewport];
         if (!draggingObjects)
@@ -1011,6 +1065,8 @@ void Editor::handleTouchUp(int px, int py)
         extruding = false;
 
     pressedObject = -1;
+    gizmoGrab = Grab::None;
+    gizmoAxis = -1;
     draggingObjects = false;
     objDragViewport = -1;
     pressedVertObj = pressedVertIdx = -1;
@@ -1026,4 +1082,22 @@ void Editor::handleTouchUp(int px, int py)
 void Editor::renderViewports(Renderer& r)
 {
     viewrender::render(scene, viewports, mode, subLevel, extruding, showFaces, maxView, r);
+
+    // transform gizmo at the selection centroid, in each visible viewport
+    if (mode == EditMode::Object && !scene.selectedObjects.empty())
+    {
+        const Vec3 c = scene.selectionCentroid();
+        for (int i = 0; i < 3; i++)
+        {
+            if (maxView >= 0 && i != maxView)
+                continue;
+            const Viewport& vp = viewports[i];
+            if (transformTool == TransformTool::Move)
+                gizmo::drawMove(vp, c, r);
+            else if (transformTool == TransformTool::Scale)
+                gizmo::drawScale(vp, c, r);
+            else if (transformTool == TransformTool::Rotate)
+                gizmo::drawRotate(vp, c, r);
+        }
+    }
 }
