@@ -16,7 +16,8 @@
 // Paint-mode tool (segmented switch)
 enum class PaintTool
 {
-    Brush,      // tap a face to paint the current color
+    Brush,      // tap or drag across faces to paint the current color
+    Bucket,     // tap a face to paint every face on its object
     Eyedropper, // tap a face to pick its color into the palette
 };
 
@@ -25,6 +26,15 @@ enum class FaceTexTool
 {
     Texture,   // tap a face to mark it textured
     Untexture, // tap a face to revert it to a flat color
+};
+
+// 3D construction grid spacing. Current is the existing 0.5 world-unit grid.
+enum class GridPreset
+{
+    Half,
+    Current,
+    Double,
+    Off,
 };
 
 // Which workspace is active: 3D modelling (ortho viewports) or 2D texture + UV
@@ -54,6 +64,7 @@ struct Editor
     static constexpr int kNumModes = 4;  // object, model, paint, texture
     static constexpr int kNumMenu = 4;   // save, load, export, exit
     static constexpr int kNumView = 4;   // wireframe, faces, flip, shading
+    static constexpr int kNumGrid = 4;   // half, current, double, off
     static constexpr int kNumTexActions = 2; // texture all, untexture all
     static constexpr int kNumExport = 2; // obj, stl
 
@@ -110,15 +121,16 @@ struct Editor
     bool showFaces = true; // filled faces in the ortho views
     bool flipViews = false; // view ortho projections from the far side
     bool shading = true;   // soft flat shading on the preview
+    GridPreset gridPreset = GridPreset::Current;
 
     // toolbar popups (each owns its layout/draw/hit-test). only one is open at a
     // time, except exportMenu which flies out over an open fileMenu. the texture
     // workspace's paint/uv menu lives in `tex`.
-    widgets::Menu modeMenu, shapeMenu, fileMenu, exportMenu, viewMenu, texActionMenu;
+    widgets::Menu modeMenu, shapeMenu, fileMenu, exportMenu, viewMenu, gridMenu, texActionMenu;
     void closeMenus()
     {
         modeMenu.open = shapeMenu.open = fileMenu.open = exportMenu.open = viewMenu.open =
-            texActionMenu.open = false;
+            gridMenu.open = texActionMenu.open = false;
     }
 
     bool wantQuit = false; // set by Exit, main loop breaks on it
@@ -144,7 +156,7 @@ struct Editor
 
     // toolbar buttons, laid out in the ctor
     widgets::Button btnMenu, btnAdd, btnDel, btnUndo, btnRedo; // top bar
-    widgets::Button btnView, btnWorkspace;                     // top bar, right
+    widgets::Button btnView, btnGrid, btnWorkspace;             // top bar, right
     widgets::Button btnMode;                                   // bottom bar, left (model)
     widgets::Button btnExtrude, btnSubdivide;                  // bottom bar, right (edit/face)
     widgets::Button btnSplit;                                  // bottom bar, right (edit/edge)
@@ -180,6 +192,8 @@ private:
     static constexpr float kScaleSnap = 0.25f;
     static constexpr float kUniformRefPx = 40.0f; // uniform-scale drag to double the size
 
+    float gridSpacing() const;
+
     bool touching = false;
     bool pressInViewport = false;
     int pressPx = 0, pressPy = 0;
@@ -209,6 +223,12 @@ private:
     int pressedEdgeObj = -1, pressedEdgeV0 = -1, pressedEdgeV1 = -1;
     bool pressedEdgeWasSelected = false;
 
+    // 3D Paint Brush stroke: the initial face is painted on press, then faces
+    // crossed by the drag are painted without taking another snapshot.
+    bool paintingFaces = false;
+    int paintViewport = -1;
+    int lastPaintPx = 0, lastPaintPy = 0;
+
     // sub-object drag: moves selected verts, or the verts of selected edges/faces
     bool pressedSub = false;      // a sub-object was pressed (drag candidate)
     bool grabSelection = false;   // extrude just ran, next viewport drag moves it
@@ -236,4 +256,5 @@ private:
     void applyObjectDrag(const Viewport& vp, float wx, float wy);
     void beginSubDrag(const Viewport& vp);
     void applySubDrag(const Viewport& vp, float wx, float wy);
+    void paintBrushFace(int obj, int face);
 };

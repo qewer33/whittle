@@ -30,7 +30,7 @@ The **3D workspace** has the base tools for 3D modelling, geometry editing and p
 Below are a list of the modes in the 3D workspace with explanations:
 - **Object**: The **Object mode** allows you to edit *whole* objects and apply the base transformations. It provides 3 tools: **Move**, **Rotate** and **Scale**.
 - **Edit**: The **Edit mode** allows you to edit the individual geometry of objects. It provides 3 tools: **Vertex**, **Edge** and **Face**.
-- **Paint**: The **Paint mode** allows you to paint faces of objects in soid colors. It provides 2 tools: **Brush** and **Picker**.
+- **Paint**: The **Paint mode** allows you to paint faces of objects in solid colors. It provides 3 tools: **Brush**, **Bucket** and **Picker**.
 - **Texture**: The **Texture mode** allows you to texture the faces of objects. It provides 2 tools: **Texture** and **Untexture**.
 
 ### 2D Workspace

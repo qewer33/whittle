@@ -10,5 +10,5 @@ namespace viewrender
 {
     void render(const Scene& scene, const Viewport viewports[3], EditMode mode,
                 SubLevel subLevel, bool extruding, bool showFaces, int onlyView,
-                Renderer& r);
+                float gridSpacing, Renderer& r);
 }

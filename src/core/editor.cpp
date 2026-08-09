@@ -11,7 +11,7 @@ using namespace widgets;
 
 static float snapToGrid(float v, float grid)
 {
-    return roundf(v / grid) * grid;
+    return grid > 0.0f ? roundf(v / grid) * grid : v;
 }
 
 // world point to screen pixel (inverse of Viewport::tapToWorld)
@@ -59,7 +59,7 @@ Editor::Editor()
         baseView[i] = {viewports[i].x, viewports[i].y, viewports[i].w, viewports[i].h};
 
     // top bar: 3D/2D workspace switch (left), add, del, undo, redo cluster,
-    // view toggles + hamburger menu (right)
+    // grid/view toggles + hamburger menu (right)
     const int bw = 30, ws = 52;
     btnWorkspace = {0, 0, ws, TB}; // labeled switch, top-left corner
     btnAdd = {ws + 4, 0, bw, TB};
@@ -68,6 +68,7 @@ Editor::Editor()
     btnRedo = {ws + 8 + 3 * bw, 0, bw, TB};
     btnMenu = {320 - bw, 0, bw, TB};        // hamburger, top-right corner
     btnView = {320 - 2 * bw - 4, 0, bw, TB}; // view toggles popup (3D workspace)
+    btnGrid = {320 - 3 * bw - 8, 0, bw, TB}; // grid spacing popup (3D workspace)
 
     // bottom bar: mode button (icon+text) left, the tool switch centered
     const int by = 240 - BB;
@@ -98,13 +99,16 @@ Editor::Editor()
                    {{Icon_Box, "Wireframe"}, {Icon_Square, "Faces"}, {Icon_Flip, "Flip"},
                     {Icon_Shade, "Shading"}},
                    false); // toggles: stay open on pick
+    gridMenu.setup(btnGrid, Placement::Below, Align::End, 90,
+                   {{Icon_GridHalf, "Half"}, {Icon_GridDefault, "Default"},
+                    {Icon_GridDouble, "Double"}, {Icon_GridOff, "Off"}});
     texActionMenu.setup(btnTexMenu, Placement::Above, Align::End, 112,
                         {{Icon_Texture, "Texture All"}, {Icon_Eraser, "Untexture All"}});
 
     // per-mode tool switches (centered pill in the bottom bar)
     transformSwitch.setup({Icon_Move, Icon_Rotate, Icon_Scale});
     subLevelSwitch.setup({Icon_Vertex, Icon_Edge, Icon_Square});
-    paintSwitch.setup({Icon_Paint, Icon_Pipette});
+    paintSwitch.setup({Icon_Paint, Icon_Bucket, Icon_Pipette});
     texSwitch.setup({Icon_Texture, Icon_Eraser});
 }
 
@@ -112,6 +116,17 @@ void Editor::setStatus(const char* m)
 {
     statusMsg = m;
     statusTime = 1.6f;
+}
+
+float Editor::gridSpacing() const
+{
+    if (gridPreset == GridPreset::Half)
+        return kSnap * 0.5f;
+    if (gridPreset == GridPreset::Double)
+        return kSnap * 2.0f;
+    if (gridPreset == GridPreset::Off)
+        return 0.0f;
+    return kSnap;
 }
 
 void Editor::serviceFileOps()
@@ -379,6 +394,8 @@ void Editor::handleTouchDown(int px, int py)
     subDragViewport = -1;
     panning = false;
     panViewport = -1;
+    paintingFaces = false;
+    paintViewport = -1;
 
     // toolbar popups: dispatch the tap to whichever menu is open, act on the
     // picked row. exportMenu is the file menu's flyout, so it eats first.
@@ -423,6 +440,13 @@ void Editor::handleTouchDown(int px, int py)
         else if (r == 1) showFaces = !showFaces;
         else if (r == 2) { flipViews = !flipViews; applyFlip(); }
         else if (r == 3) shading = !shading;
+        return;
+    }
+    if (gridMenu.open)
+    {
+        const int r = gridMenu.handle(px, py);
+        if (r >= 0)
+            gridPreset = (GridPreset)r;
         return;
     }
     if (texActionMenu.open)
@@ -494,6 +518,7 @@ void Editor::handleTouchDown(int px, int py)
     }
     if (btnUndo.contains(px, py)) { scene.undo(); return; }
     if (btnRedo.contains(px, py)) { scene.redo(); return; }
+    if (is3D() && btnGrid.contains(px, py)) { const bool willOpen = !gridMenu.open; closeMenus(); gridMenu.open = willOpen; return; }
     if (is3D() && btnView.contains(px, py)) { const bool willOpen = !viewMenu.open; closeMenus(); viewMenu.open = willOpen; return; }
 
     // active-color button (paint contexts) opens the picker
@@ -604,8 +629,20 @@ void Editor::handleTouchDown(int px, int py)
             if (paintTool == PaintTool::Brush)
             {
                 scene.snapshot();
-                f.textured = false;
-                f.color = paintColor;
+                paintBrushFace(o, fi);
+                paintingFaces = true;
+                paintViewport = vpIndex;
+                lastPaintPx = px;
+                lastPaintPy = py;
+            }
+            else if (paintTool == PaintTool::Bucket)
+            {
+                scene.snapshot();
+                for (Face& objectFace : scene.objects[o].faces)
+                {
+                    objectFace.textured = false;
+                    objectFace.color = paintColor;
+                }
             }
             else // eyedropper: pick the exact face color
                 paintColor = f.color;
@@ -761,8 +798,8 @@ void Editor::applyObjectDrag(const Viewport& vp, float wx, float wy)
     float dX = 0, dY = 0, c = 1, s = 0, factor = 1;
     if (transformTool == TransformTool::Move)
     {
-        dX = snapToGrid(wx - dragStartWx, kSnap);
-        dY = snapToGrid(wy - dragStartWy, kSnap);
+        dX = snapToGrid(wx - dragStartWx, gridSpacing());
+        dY = snapToGrid(wy - dragStartWy, gridSpacing());
         // gizmo arrow grabbed: constrain to that one world axis
         if (gizmoGrab == Grab::Axis)
         {
@@ -894,8 +931,8 @@ void Editor::beginSubDrag(const Viewport& vp)
 void Editor::applySubDrag(const Viewport& vp, float wx, float wy)
 {
     const int ax = vp.axisX, ay = vp.axisY;
-    const float dX = snapToGrid(wx - dragStartWx, kSnap);
-    const float dY = snapToGrid(wy - dragStartWy, kSnap);
+    const float dX = snapToGrid(wx - dragStartWx, gridSpacing());
+    const float dY = snapToGrid(wy - dragStartWy, gridSpacing());
     for (size_t k = 0; k < dragVerts.size() && k < dragOrig.size(); k++)
     {
         const VertRef& vr = dragVerts[k];
@@ -909,6 +946,16 @@ void Editor::applySubDrag(const Viewport& vp, float wx, float wy)
         setAxis(np, ay, getAxis(dragOrig[k], ay) + dY);
         m.positions[vr.vert] = np;
     }
+}
+
+void Editor::paintBrushFace(int obj, int face)
+{
+    if (obj < 0 || obj >= (int)scene.objects.size() || face < 0 ||
+        face >= (int)scene.objects[obj].faces.size())
+        return;
+    Face& f = scene.objects[obj].faces[face];
+    f.textured = false;
+    f.color = paintColor;
 }
 
 void Editor::handleTouchMove(int px, int py)
@@ -961,6 +1008,30 @@ void Editor::handleTouchMove(int px, int py)
 
     if (!dragMoved)
         return;
+
+    if (paintingFaces)
+    {
+        Viewport* vp = viewportAt(px, py);
+        if (vp && (int)(vp - viewports) == paintViewport)
+        {
+            // Sample between input positions so quick strokes do not skip
+            // narrow faces between two touch events.
+            const int dxp = px - lastPaintPx, dyp = py - lastPaintPy;
+            const int distance = std::max(abs(dxp), abs(dyp));
+            const int steps = distance / 3 + 1;
+            for (int i = 1; i <= steps; i++)
+            {
+                const int sx = lastPaintPx + dxp * i / steps;
+                const int sy = lastPaintPy + dyp * i / steps;
+                int o, fi;
+                if (pickFace(*vp, sx, sy, o, fi))
+                    paintBrushFace(o, fi);
+            }
+        }
+        lastPaintPx = px;
+        lastPaintPy = py;
+        return;
+    }
 
     if (panning && panViewport >= 0)
     {
@@ -1071,11 +1142,14 @@ void Editor::handleTouchUp(int px, int py)
     subDragViewport = -1;
     panning = false;
     panViewport = -1;
+    paintingFaces = false;
+    paintViewport = -1;
 }
 
 void Editor::renderViewports(Renderer& r)
 {
-    viewrender::render(scene, viewports, mode, subLevel, extruding, showFaces, maxView, r);
+    viewrender::render(scene, viewports, mode, subLevel, extruding, showFaces, maxView,
+                       gridSpacing(), r);
 
     // transform gizmo at the selection centroid, in each visible viewport
     if (mode == EditMode::Object && !scene.selectedObjects.empty())

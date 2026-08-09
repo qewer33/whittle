@@ -6,7 +6,6 @@ static const u32 kEdge = 0xB8C0D0FF;
 static const u32 kEdgeSel = 0xFFD24AFF;
 static const u32 kMarker = 0xFFD24AFF;
 static const u32 kNormal = 0x5BD98BFF; // face-normal arrow (extrude direction)
-static constexpr float kGridMinor = 0.5f;
 
 static float snapToGrid(float v, float grid)
 {
@@ -24,22 +23,24 @@ static Vec3 vnorm(const Vec3& a)
     return l > 1e-6f ? Vec3{a.x / l, a.y / l, a.z / l} : Vec3{0, 0, 0};
 }
 
-static void pushGrid(const Viewport& vp, Renderer& r)
+static void pushGrid(const Viewport& vp, float gridSpacing, Renderer& r)
 {
+    if (gridSpacing <= 0.0f)
+        return;
     const float minX = vp.centerX - vp.spanX() / 2.0f;
     const float maxX = vp.centerX + vp.spanX() / 2.0f;
     const float minY = vp.centerY - vp.spanY() / 2.0f;
     const float maxY = vp.centerY + vp.spanY() / 2.0f;
 
-    const float startX = floorf(minX / kGridMinor) * kGridMinor;
-    const float startY = floorf(minY / kGridMinor) * kGridMinor;
+    const float startX = floorf(minX / gridSpacing) * gridSpacing;
+    const float startY = floorf(minY / gridSpacing) * gridSpacing;
 
     Line lines[128];
     int n = 0;
 
-    for (float x = startX; x <= maxX + 0.001f && n < 120; x += kGridMinor)
+    for (float x = startX; x <= maxX + 0.001f && n < 120; x += gridSpacing)
     {
-        const float xp = snapToGrid(x, kGridMinor);
+        const float xp = snapToGrid(x, gridSpacing);
         if (xp < minX - 0.001f)
             continue;
         Vec3 a = {0, 0, 0}, b = {0, 0, 0};
@@ -49,9 +50,9 @@ static void pushGrid(const Viewport& vp, Renderer& r)
         setAxis(b, vp.axisY, maxY);
         lines[n++] = {a, b};
     }
-    for (float y = startY; y <= maxY + 0.001f && n < 120; y += kGridMinor)
+    for (float y = startY; y <= maxY + 0.001f && n < 120; y += gridSpacing)
     {
-        const float yp = snapToGrid(y, kGridMinor);
+        const float yp = snapToGrid(y, gridSpacing);
         if (yp < minY - 0.001f)
             continue;
         Vec3 a = {0, 0, 0}, b = {0, 0, 0};
@@ -211,7 +212,7 @@ static void pushFaceNormalArrows(const Viewport& vp, const Scene& scene, Rendere
 
 void viewrender::render(const Scene& scene, const Viewport viewports[3],
                         EditMode mode, SubLevel subLevel, bool extruding,
-                        bool showFaces, int onlyView, Renderer& r)
+                        bool showFaces, int onlyView, float gridSpacing, Renderer& r)
 {
     for (int i = 0; i < 3; i++)
     {
@@ -220,7 +221,7 @@ void viewrender::render(const Scene& scene, const Viewport viewports[3],
         const Viewport& vp = viewports[i];
         r.setBottomScissor(vp.x, vp.y, vp.w, vp.h);
 
-        pushGrid(vp, r);
+        pushGrid(vp, gridSpacing, r);
         if (showFaces)
             for (const Mesh& m : scene.objects)
                 r.drawFaces(m, vp.matrix(), GPU_CULL_NONE); // depth-sorted, double-sided

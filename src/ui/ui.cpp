@@ -303,7 +303,10 @@ namespace ui
         editor.btnUndo.draw(Icon_Undo, false, editor.hasUndo());
         editor.btnRedo.draw(Icon_Redo, false, editor.hasRedo());
         if (editor.is3D())
+        {
+            editor.btnGrid.draw(Icon_GridDefault, editor.gridMenu.open);
             editor.btnView.draw(Icon_Eye, editor.viewMenu.open);
+        }
         editor.btnMenu.draw(Icon_Menu, editor.fileMenu.open);
 
         // bottom bar: model controls (mode + sub-switch), or texture tools
@@ -460,6 +463,12 @@ namespace ui
             const bool on[Editor::kNumView] = {editor.wireframe, editor.showFaces,
                                                editor.flipViews, editor.shading};
             editor.viewMenu.draw(on);
+        }
+        if (editor.gridMenu.open)
+        {
+            bool on[Editor::kNumGrid] = {};
+            on[(int)editor.gridPreset] = true;
+            editor.gridMenu.draw(on);
         }
         if (editor.texActionMenu.open)
             editor.texActionMenu.draw();

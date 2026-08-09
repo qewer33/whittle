@@ -48,6 +48,10 @@ icons=(
   "35_more:ellipsis-vertical"
   "36_back:arrow-left"
   "37_export:upload"
+  "38_grid_half:zoom-in"
+  "39_grid_default:grid-3x3"
+  "40_grid_double:zoom-out"
+  "41_grid_off:eye-off"
 )
 
 tmp="$(mktemp -d)"

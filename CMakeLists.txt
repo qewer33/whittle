@@ -58,6 +58,8 @@ set(ICON_PNGS
     ${ICON_DIR}/30_subdivide.png ${ICON_DIR}/31_split.png ${ICON_DIR}/32_shade.png
     ${ICON_DIR}/33_minimize.png ${ICON_DIR}/34_eraser.png ${ICON_DIR}/35_more.png
     ${ICON_DIR}/36_back.png ${ICON_DIR}/37_export.png
+    ${ICON_DIR}/38_grid_half.png ${ICON_DIR}/39_grid_default.png
+    ${ICON_DIR}/40_grid_double.png ${ICON_DIR}/41_grid_off.png
 )
 set(ICON_T3X ${CMAKE_CURRENT_BINARY_DIR}/icons.t3x)
 add_custom_command(

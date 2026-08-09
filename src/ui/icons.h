@@ -43,6 +43,10 @@ enum Icon
     Icon_More,
     Icon_Back,
     Icon_Export,
+    Icon_GridHalf,
+    Icon_GridDefault,
+    Icon_GridDouble,
+    Icon_GridOff,
     Icon_Count,
 };
 
