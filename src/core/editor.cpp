@@ -30,6 +30,17 @@ static void viewportWorld(const Viewport& vp, int px, int py, float& wx, float& 
     wy = vp.centerY - (py - (vp.y + vp.h / 2)) / vp.scale;
 }
 
+// Match the ortho matrix's depth direction. The smaller key is the vertex on
+// the visible side of the view for the ortho depth convention.
+static float viewportDepth(const Viewport& vp, const Vec3& p)
+{
+    const int axisZ = 3 - vp.axisX - vp.axisY;
+    const int eps = ((vp.axisX - vp.axisY) * (vp.axisY - axisZ) *
+                     (axisZ - vp.axisX)) / 2;
+    const float sign = (vp.flipped ? -1.0f : 1.0f) * (float)eps;
+    return sign * getAxis(p, axisZ);
+}
+
 static bool pointInTri(float px, float py, float ax, float ay, float bx,
                        float by, float cx, float cy)
 {
@@ -223,6 +234,7 @@ bool Editor::pickVertexAny(const Viewport& vp, int px, int py, int& outObj, int&
 
     int bestObj = -1, bestVert = -1;
     float bestDist = kSelectRadiusPx * kSelectRadiusPx;
+    float bestDepth = INFINITY;
     for (int o = 0; o < (int)scene.objects.size(); o++)
     {
         const Mesh& m = scene.objects[o];
@@ -232,9 +244,11 @@ bool Editor::pickVertexAny(const Viewport& vp, int px, int py, int& outObj, int&
             const float dx = (getAxis(p, vp.axisX) - wx) * vp.scale;
             const float dy = (getAxis(p, vp.axisY) - wy) * vp.scale;
             const float d = dx * dx + dy * dy;
-            if (d < bestDist)
+            const float depth = viewportDepth(vp, p);
+            if (d < bestDist || (fabsf(d - bestDist) < 0.001f && depth < bestDepth))
             {
                 bestDist = d;
+                bestDepth = depth;
                 bestObj = o;
                 bestVert = i;
             }
