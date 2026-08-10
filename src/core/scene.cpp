@@ -207,40 +207,51 @@ void Scene::deleteSelectedVerts()
     clearSelection();
 }
 
-// subdivide each selected face into 4
+// uniformly subdivide every face on each object touched by the selection
 void Scene::subdivideSelectedFaces()
 {
     if (selectedFaces.empty())
         return;
     snapshot();
 
+    std::vector<FaceRef> newSelection;
     for (int o = 0; o < (int)objects.size(); o++)
     {
-        std::vector<int> sel;
+        Mesh& m = objects[o];
+        const std::vector<Face> originalFaces = m.faces;
+        std::vector<bool> selectedMask(originalFaces.size(), false);
         for (const FaceRef& fr : selectedFaces)
-            if (fr.obj == o && fr.face >= 0 && fr.face < (int)objects[o].faces.size())
-                sel.push_back(fr.face);
-        if (sel.empty())
+            if (fr.obj == o && fr.face >= 0 && fr.face < (int)originalFaces.size())
+                selectedMask[fr.face] = true;
+
+        bool anySelected = false;
+        for (bool selected : selectedMask)
+            if (selected) { anySelected = true; break; }
+        if (!anySelected)
             continue;
 
-        Mesh& m = objects[o];
-        std::vector<std::array<int, 3>> midCache; // {loVert, hiVert, newVert}
-        auto edgeMid = [&](int a, int b) {
-            const int lo = a < b ? a : b, hi = a < b ? b : a;
-            for (const auto& e : midCache)
-                if (e[0] == lo && e[1] == hi)
-                    return e[2];
+        m.rebuildTopology();
+        std::vector<int> edgeMidpoints(m.topology.edges.size(), -1);
+        auto midpoint = [&](int a, int b) {
+            if (a == b)
+                return a;
+            const int edge = m.topology.findEdge(a, b);
+            if (edge < 0)
+                return -1;
+            if (edgeMidpoints[edge] >= 0)
+                return edgeMidpoints[edge];
             const Vec3 pa = m.positions[a], pb = m.positions[b];
             const int idx = (int)m.positions.size();
             m.positions.push_back({(pa.x + pb.x) * 0.5f, (pa.y + pb.y) * 0.5f, (pa.z + pb.z) * 0.5f});
-            midCache.push_back({lo, hi, idx});
+            edgeMidpoints[edge] = idx;
             return idx;
         };
 
-        std::vector<Face> extra; // sub faces past the first (appended after)
-        for (int fi : sel)
+        std::vector<Face> refined;
+        refined.reserve(originalFaces.size() * 4);
+        for (int fi = 0; fi < (int)originalFaces.size(); fi++)
         {
-            const Face f = m.faces[fi]; // copy: the slot gets overwritten below
+            const Face& f = originalFaces[fi];
             const int i0 = f.indices[0], i1 = f.indices[1], i2 = f.indices[2], i3 = f.indices[3];
             const bool tri = (i3 == i2);
 
@@ -264,8 +275,8 @@ void Scene::subdivideSelectedFaces()
             Face sub[4];
             if (!tri)
             {
-                const int a01 = edgeMid(i0, i1), a12 = edgeMid(i1, i2),
-                          a23 = edgeMid(i2, i3), a30 = edgeMid(i3, i0);
+                const int a01 = midpoint(i0, i1), a12 = midpoint(i1, i2),
+                          a23 = midpoint(i2, i3), a30 = midpoint(i3, i0);
                 const Vec3 p0 = m.positions[i0], p1 = m.positions[i1],
                            p2 = m.positions[i2], p3 = m.positions[i3];
                 const int cc = (int)m.positions.size();
@@ -286,7 +297,7 @@ void Scene::subdivideSelectedFaces()
             }
             else
             {
-                const int a01 = edgeMid(i0, i1), a12 = edgeMid(i1, i2), a20 = edgeMid(i2, i0);
+                const int a01 = midpoint(i0, i1), a12 = midpoint(i1, i2), a20 = midpoint(i2, i0);
                 float u01[2], u12[2], u20[2];
                 uvMid(f.uv[0], f.uv[1], u01);
                 uvMid(f.uv[1], f.uv[2], u12);
@@ -297,15 +308,18 @@ void Scene::subdivideSelectedFaces()
                 sub[3] = mk(a01, a12, a20, a20, u01, u12, u20, u20); // center
             }
 
-            m.faces[fi] = sub[0];
-            extra.push_back(sub[1]);
-            extra.push_back(sub[2]);
-            extra.push_back(sub[3]);
+            const int first = (int)refined.size();
+            for (const Face& child : sub)
+                refined.push_back(child);
+            if (selectedMask[fi])
+                for (int k = 0; k < 4; k++)
+                    newSelection.push_back({o, first + k});
         }
-        for (const Face& e : extra)
-            m.faces.push_back(e);
+        m.faces = std::move(refined);
+        m.rebuildTopology();
     }
     clearSelection();
+    selectedFaces = std::move(newSelection);
 }
 
 // loop cut from each selected edge

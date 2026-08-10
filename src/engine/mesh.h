@@ -31,10 +31,32 @@ struct Face
     float uv[4][2] = {};  // per-vertex uv into the shared texture
 };
 
+struct Mesh;
+
+// Derived connectivity for editing operations. This is rebuilt from the face
+// indices and is intentionally not serialized with a project.
+struct MeshTopology
+{
+    struct Edge
+    {
+        int v0, v1;             // sorted vertex pair
+        std::vector<int> faces; // faces incident to this edge
+    };
+
+    std::vector<Edge> edges;
+
+    void rebuild(const Mesh& mesh);
+    int findEdge(int a, int b) const;
+};
+
 struct Mesh
 {
     std::vector<Vec3> positions;
     std::vector<Face> faces;
+    mutable MeshTopology topology;
+
+    // Topology is derived working data, never part of the project file.
+    void rebuildTopology() const { topology.rebuild(*this); }
 
     int addVertex(Vec3 p);
     // drops the vertex and any face using it, returns count removed (0 if bad idx)

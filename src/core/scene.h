@@ -80,7 +80,7 @@ struct Scene
     void deleteSelectedEdges();  // drop faces adjacent to the selected edges
     void deleteSelectedFaces();  // drop the selected faces
     void extrudeSelectedFaces();   // pull selected faces out, walling the border
-    void subdivideSelectedFaces(); // split each selected face into four
+    void subdivideSelectedFaces(); // refine the whole touched object; keep selected children
     void splitSelectedEdges();     // insert a vertex on each selected edge
     void textureAllFaces();      // mark every face textured (atlas layout done separately)
     void untextureAllFaces();    // revert every face to a flat color

@@ -1,5 +1,47 @@
 #include "mesh.h"
+#include <algorithm>
 #include <math.h>
+
+void MeshTopology::rebuild(const Mesh& mesh)
+{
+    edges.clear();
+
+    auto addUnique = [](std::vector<int>& values, int value) {
+        if (std::find(values.begin(), values.end(), value) == values.end())
+            values.push_back(value);
+    };
+
+    for (int fi = 0; fi < (int)mesh.faces.size(); fi++)
+    {
+        const Face& f = mesh.faces[fi];
+        for (int k = 0; k < 4; k++)
+        {
+            const int v = f.indices[k];
+            const int next = f.indices[(k + 1) & 3];
+            if (v == next || v < 0 || next < 0 || v >= (int)mesh.positions.size() ||
+                next >= (int)mesh.positions.size())
+                continue;
+            const int lo = v < next ? v : next;
+            const int hi = v < next ? next : v;
+            int ei = findEdge(lo, hi);
+            if (ei < 0)
+            {
+                ei = (int)edges.size();
+                edges.push_back({lo, hi, {}});
+            }
+            addUnique(edges[ei].faces, fi);
+        }
+    }
+}
+
+int MeshTopology::findEdge(int a, int b) const
+{
+    const int lo = a < b ? a : b, hi = a < b ? b : a;
+    for (int i = 0; i < (int)edges.size(); i++)
+        if (edges[i].v0 == lo && edges[i].v1 == hi)
+            return i;
+    return -1;
+}
 
 int Mesh::addVertex(Vec3 p)
 {

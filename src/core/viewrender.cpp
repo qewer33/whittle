@@ -71,17 +71,26 @@ static void pushMeshLines(const Viewport& vp, const Mesh& mesh, Renderer& r, u32
 {
     Line lines[256];
     int n = 0;
+    const C3D_Mtx m = vp.matrix();
+    auto flush = [&]() {
+        if (n > 0)
+        {
+            r.drawLineSet(lines, n, m, color, 240, 320);
+            n = 0;
+        }
+    };
     for (const Face& face : mesh.faces)
     {
-        for (int e = 0; e < 4 && n < 256; e++)
+        for (int e = 0; e < 4; e++)
         {
             lines[n].a = mesh.positions[face.indices[e]];
             lines[n].b = mesh.positions[face.indices[(e + 1) % 4]];
             n++;
+            if (n == 256)
+                flush();
         }
     }
-    const C3D_Mtx m = vp.matrix();
-    r.drawLineSet(lines, n, m, color, 240, 320);
+    flush();
 }
 
 static void pushVertexMarkers(const Viewport& vp, const Scene& scene, Renderer& r)

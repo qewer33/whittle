@@ -46,7 +46,7 @@ static bool pointInTri(float px, float py, float ax, float ay, float bx,
 {
     // reject zero-area triangles
     const float area2 = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
-    if (fabsf(area2) < 1.0f)
+    if (fabsf(area2) < 1e-5f)
         return false;
 
     const float d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
@@ -245,7 +245,16 @@ bool Editor::pickVertexAny(const Viewport& vp, int px, int py, int& outObj, int&
             const float dy = (getAxis(p, vp.axisY) - wy) * vp.scale;
             const float d = dx * dx + dy * dy;
             const float depth = viewportDepth(vp, p);
-            if (d < bestDist || (fabsf(d - bestDist) < 0.001f && depth < bestDepth))
+            bool better = d < bestDist;
+            if (!better && bestVert >= 0 && fabsf(d - bestDist) < 0.001f)
+            {
+                if (depth < bestDepth - 0.001f)
+                    better = true;
+                else if (fabsf(depth - bestDepth) < 0.001f &&
+                         (o > bestObj || (o == bestObj && i > bestVert)))
+                    better = true;
+            }
+            if (better)
             {
                 bestDist = d;
                 bestDepth = depth;
@@ -329,7 +338,7 @@ bool Editor::pickFace(const Viewport& vp, int px, int py, int& outObj, int& outF
             if (pointInTri((float)px, (float)py, sx[0], sy[0], sx[1], sy[1], sx[2], sy[2]) ||
                 pointInTri((float)px, (float)py, sx[0], sy[0], sx[2], sy[2], sx[3], sy[3]))
             {
-                const float area = quadSignedArea(sx, sy);
+                const float area = fabsf(quadSignedArea(sx, sy));
                 if (bestFace < 0 || area > bestArea)
                 {
                     bestFace = fi;

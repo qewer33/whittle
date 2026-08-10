@@ -470,10 +470,15 @@ void Renderer::clearScissor()
 
 void Renderer::drawWire(const Mesh& mesh, const C3D_Mtx& vp)
 {
-    if (mesh.faces.size() * 4 > 256)
-        return;
     Line edges[256];
     int n = 0;
+    auto flush = [&]() {
+        if (n > 0)
+        {
+            drawLineSet(edges, n, vp, WIRE_COLOR, 240, 400);
+            n = 0;
+        }
+    };
     for (const Face& face : mesh.faces)
     {
         for (int e = 0; e < 4; e++)
@@ -481,9 +486,11 @@ void Renderer::drawWire(const Mesh& mesh, const C3D_Mtx& vp)
             edges[n].a = mesh.positions[face.indices[e]];
             edges[n].b = mesh.positions[face.indices[(e + 1) % 4]];
             n++;
+            if (n == 256)
+                flush();
         }
     }
-    drawLineSet(edges, n, vp, WIRE_COLOR, 240, 400);
+    flush();
 }
 
 static Vec3 gsub(Vec3 a, Vec3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
