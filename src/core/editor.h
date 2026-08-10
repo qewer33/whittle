@@ -246,7 +246,9 @@ private:
 
     Viewport* viewportAt(int px, int py);
     bool pickVertexAny(const Viewport& vp, int px, int py, int& outObj, int& outVert);
+    bool pickSelectedEdge(const Viewport& vp, int px, int py, int& outObj, int& outV0, int& outV1);
     bool pickEdge(const Viewport& vp, int px, int py, int& outObj, int& outV0, int& outV1);
+    bool pickSelectedFace(const Viewport& vp, int px, int py, int& outObj, int& outFace);
     bool pickFace(const Viewport& vp, int px, int py, int& outObj, int& outFace);
     int pickObject(const Viewport& vp, int px, int py);
     void deleteSelected(); // dispatches to the scene by mode

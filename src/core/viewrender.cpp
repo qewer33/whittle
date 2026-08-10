@@ -114,11 +114,67 @@ static void pushVertexMarkers(const Viewport& vp, const Scene& scene, Renderer& 
     }
 }
 
+static void appendCrossMarker(const Viewport& vp, const Vec3& p, float len,
+                              Line* lines, int& n)
+{
+    Vec3 a = p, b = p, c = p, d = p;
+    setAxis(a, vp.axisX, getAxis(p, vp.axisX) - len);
+    setAxis(b, vp.axisX, getAxis(p, vp.axisX) + len);
+    setAxis(c, vp.axisY, getAxis(p, vp.axisY) - len);
+    setAxis(d, vp.axisY, getAxis(p, vp.axisY) + len);
+    lines[n++] = {a, b};
+    lines[n++] = {c, d};
+}
+
+static void pushSelectedEdgeMarkers(const Viewport& vp, const Scene& scene, Renderer& r)
+{
+    Line lines[256];
+    int n = 0;
+    const C3D_Mtx m = vp.matrix();
+    auto flush = [&]() {
+        if (n > 0)
+        {
+            r.drawLineSet(lines, n, m, kMarker, 240, 320);
+            n = 0;
+        }
+    };
+    auto emit = [&](const Vec3& p) {
+        if (n > 254)
+            flush();
+        appendCrossMarker(vp, p, 0.3f, lines, n);
+    };
+    for (const EdgeRef& er : scene.selectedEdges)
+    {
+        if (er.obj < 0 || er.obj >= (int)scene.objects.size())
+            continue;
+        const Mesh& mesh = scene.objects[er.obj];
+        if (er.v0 < 0 || er.v0 >= (int)mesh.positions.size() || er.v1 < 0 ||
+            er.v1 >= (int)mesh.positions.size())
+            continue;
+        emit(mesh.positions[er.v0]);
+        emit(mesh.positions[er.v1]);
+    }
+    flush();
+}
+
 // selected edges, drawn in the highlight color over the grey wireframe
 static void pushSelectedEdges(const Viewport& vp, const Scene& scene, Renderer& r)
 {
-    Line lines[128];
+    Line lines[256];
     int n = 0;
+    const C3D_Mtx m = vp.matrix();
+    auto flush = [&]() {
+        if (n > 0)
+        {
+            r.drawLineSet(lines, n, m, kEdgeSel, 240, 320);
+            n = 0;
+        }
+    };
+    auto add = [&](const Line& line) {
+        if (n == 256)
+            flush();
+        lines[n++] = line;
+    };
     for (const EdgeRef& er : scene.selectedEdges)
     {
         if (er.obj < 0 || er.obj >= (int)scene.objects.size())
@@ -128,11 +184,9 @@ static void pushSelectedEdges(const Viewport& vp, const Scene& scene, Renderer& 
             continue;
         if (er.v1 < 0 || er.v1 >= (int)mesh.positions.size())
             continue;
-        if (n < 128)
-            lines[n++] = {mesh.positions[er.v0], mesh.positions[er.v1]};
+        add({mesh.positions[er.v0], mesh.positions[er.v1]});
     }
-    if (n)
-        r.drawLineSet(lines, n, vp.matrix(), kEdgeSel, 240, 320);
+    flush();
 }
 
 // selected faces: highlight the border plus the two diagonals so they read as a
@@ -141,6 +195,19 @@ static void pushSelectedFaces(const Viewport& vp, const Scene& scene, Renderer& 
 {
     Line lines[256];
     int n = 0;
+    const C3D_Mtx m = vp.matrix();
+    auto flush = [&]() {
+        if (n > 0)
+        {
+            r.drawLineSet(lines, n, m, kEdgeSel, 240, 320);
+            n = 0;
+        }
+    };
+    auto add = [&](const Line& line) {
+        if (n == 256)
+            flush();
+        lines[n++] = line;
+    };
     for (const FaceRef& fr : scene.selectedFaces)
     {
         if (fr.obj < 0 || fr.obj >= (int)scene.objects.size())
@@ -149,15 +216,51 @@ static void pushSelectedFaces(const Viewport& vp, const Scene& scene, Renderer& 
         if (fr.face < 0 || fr.face >= (int)mesh.faces.size())
             continue;
         const Face& f = mesh.faces[fr.face];
-        for (int e = 0; e < 4 && n < 254; e++)
-            lines[n++] = {mesh.positions[f.indices[e]], mesh.positions[f.indices[(e + 1) % 4]]};
-        if (n < 255)
-            lines[n++] = {mesh.positions[f.indices[0]], mesh.positions[f.indices[2]]};
-        if (n < 256)
-            lines[n++] = {mesh.positions[f.indices[1]], mesh.positions[f.indices[3]]};
+        for (int e = 0; e < 4; e++)
+            add({mesh.positions[f.indices[e]], mesh.positions[f.indices[(e + 1) % 4]]});
+        add({mesh.positions[f.indices[0]], mesh.positions[f.indices[2]]});
+        add({mesh.positions[f.indices[1]], mesh.positions[f.indices[3]]});
     }
-    if (n)
-        r.drawLineSet(lines, n, vp.matrix(), kEdgeSel, 240, 320);
+    flush();
+}
+
+static void pushSelectedFaceMarkers(const Viewport& vp, const Scene& scene, Renderer& r)
+{
+    Line lines[256];
+    int n = 0;
+    const C3D_Mtx m = vp.matrix();
+    auto flush = [&]() {
+        if (n > 0)
+        {
+            r.drawLineSet(lines, n, m, kMarker, 240, 320);
+            n = 0;
+        }
+    };
+    auto emit = [&](const Vec3& p, float len) {
+        if (n > 254)
+            flush();
+        appendCrossMarker(vp, p, len, lines, n);
+    };
+    for (const FaceRef& fr : scene.selectedFaces)
+    {
+        if (fr.obj < 0 || fr.obj >= (int)scene.objects.size())
+            continue;
+        const Mesh& mesh = scene.objects[fr.obj];
+        if (fr.face < 0 || fr.face >= (int)mesh.faces.size())
+            continue;
+        const Face& f = mesh.faces[fr.face];
+        Vec3 center = {0.0f, 0.0f, 0.0f};
+        for (int k = 0; k < 4; k++)
+        {
+            const Vec3& p = mesh.positions[f.indices[k]];
+            emit(p, 0.22f);
+            center.x += p.x * 0.25f;
+            center.y += p.y * 0.25f;
+            center.z += p.z * 0.25f;
+        }
+        emit(center, 0.34f); // remains available when the face is edge-on
+    }
+    flush();
 }
 
 // outward-normal arrow at each selected face centroid (the extrude direction).
@@ -245,10 +348,14 @@ void viewrender::render(const Scene& scene, const Viewport viewports[3],
             if (subLevel == SubLevel::Vertex)
                 pushVertexMarkers(vp, scene, r);
             else if (subLevel == SubLevel::Edge)
+            {
                 pushSelectedEdges(vp, scene, r);
+                pushSelectedEdgeMarkers(vp, scene, r);
+            }
             else
             {
                 pushSelectedFaces(vp, scene, r);
+                pushSelectedFaceMarkers(vp, scene, r);
                 if (extruding)
                     pushFaceNormalArrows(vp, scene, r);
             }

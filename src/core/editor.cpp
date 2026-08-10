@@ -41,6 +41,11 @@ static float viewportDepth(const Viewport& vp, const Vec3& p)
     return sign * getAxis(p, axisZ);
 }
 
+static float edgeDepth(const Viewport& vp, const Vec3& a, const Vec3& b)
+{
+    return (viewportDepth(vp, a) + viewportDepth(vp, b)) * 0.5f;
+}
+
 static bool pointInTri(float px, float py, float ax, float ay, float bx,
                        float by, float cx, float cy)
 {
@@ -282,10 +287,46 @@ static float distToSegment(float px, float py, float ax, float ay, float bx, flo
     return sqrtf(dx * dx + dy * dy);
 }
 
+bool Editor::pickSelectedEdge(const Viewport& vp, int px, int py, int& outObj,
+                              int& outV0, int& outV1)
+{
+    float bestD = 12.0f;
+    float bestDepth = INFINITY;
+    int bestO = -1, bestV0 = -1, bestV1 = -1;
+    for (const EdgeRef& er : scene.selectedEdges)
+    {
+        if (er.obj < 0 || er.obj >= (int)scene.objects.size())
+            continue;
+        const Mesh& m = scene.objects[er.obj];
+        if (er.v0 < 0 || er.v0 >= (int)m.positions.size() || er.v1 < 0 ||
+            er.v1 >= (int)m.positions.size() || er.v0 == er.v1)
+            continue;
+        float ax, ay, bx, by;
+        worldToScreen(vp, m.positions[er.v0], ax, ay);
+        worldToScreen(vp, m.positions[er.v1], bx, by);
+        const float d = distToSegment((float)px, (float)py, ax, ay, bx, by);
+        const float depth = edgeDepth(vp, m.positions[er.v0], m.positions[er.v1]);
+        if (d < bestD - 0.001f ||
+            (fabsf(d - bestD) < 0.001f && depth < bestDepth - 0.001f))
+        {
+            bestD = d;
+            bestDepth = depth;
+            bestO = er.obj;
+            bestV0 = er.v0;
+            bestV1 = er.v1;
+        }
+    }
+    outObj = bestO;
+    outV0 = bestV0;
+    outV1 = bestV1;
+    return bestO >= 0;
+}
+
 // nearest edge (a face-border segment) to the tap, returns its two vert indices
 bool Editor::pickEdge(const Viewport& vp, int px, int py, int& outObj, int& outV0, int& outV1)
 {
     float bestD = 10.0f; // px
+    float bestDepth = INFINITY;
     int bO = -1, bV0 = -1, bV1 = -1;
     for (int o = 0; o < (int)scene.objects.size(); o++)
     {
@@ -299,7 +340,16 @@ bool Editor::pickEdge(const Viewport& vp, int px, int py, int& outObj, int& outV
                 worldToScreen(vp, m.positions[a], ax, ay);
                 worldToScreen(vp, m.positions[b], bx, by);
                 const float d = distToSegment((float)px, (float)py, ax, ay, bx, by);
-                if (d < bestD) { bestD = d; bO = o; bV0 = a; bV1 = b; }
+                const float depth = edgeDepth(vp, m.positions[a], m.positions[b]);
+                if (d < bestD - 0.001f ||
+                    (fabsf(d - bestD) < 0.001f && depth < bestDepth - 0.001f))
+                {
+                    bestD = d;
+                    bestDepth = depth;
+                    bO = o;
+                    bV0 = a;
+                    bV1 = b;
+                }
             }
     }
     outObj = bO;
@@ -320,38 +370,111 @@ static float quadSignedArea(const float* sx, const float* sy)
     return a;
 }
 
+bool Editor::pickSelectedFace(const Viewport& vp, int px, int py, int& outObj,
+                              int& outFace)
+{
+    int centroidObj = -1, centroidFace = -1;
+    float bestCentroidD = kSelectRadiusPx * kSelectRadiusPx;
+    float bestCentroidDepth = INFINITY;
+    int insideObj = -1, insideFace = -1;
+    float insideDepth = INFINITY, insideArea = 0.0f;
+    for (const FaceRef& fr : scene.selectedFaces)
+    {
+        if (fr.obj < 0 || fr.obj >= (int)scene.objects.size())
+            continue;
+        const Mesh& m = scene.objects[fr.obj];
+        if (fr.face < 0 || fr.face >= (int)m.faces.size())
+            continue;
+        const Face& f = m.faces[fr.face];
+        float sx[4], sy[4];
+        float cx = 0.0f, cy = 0.0f;
+        float depth = 0.0f;
+        for (int k = 0; k < 4; k++)
+        {
+            const Vec3& p = m.positions[f.indices[k]];
+            worldToScreen(vp, p, sx[k], sy[k]);
+            cx += sx[k] * 0.25f;
+            cy += sy[k] * 0.25f;
+            depth += viewportDepth(vp, p) * 0.25f;
+        }
+        const float area = fabsf(quadSignedArea(sx, sy));
+        const bool inside =
+            pointInTri((float)px, (float)py, sx[0], sy[0], sx[1], sy[1], sx[2], sy[2]) ||
+            pointInTri((float)px, (float)py, sx[0], sy[0], sx[2], sy[2], sx[3], sy[3]);
+        if (inside &&
+            (insideObj < 0 || depth < insideDepth - 0.001f ||
+             (fabsf(depth - insideDepth) < 0.001f && area > insideArea)))
+        {
+            insideObj = fr.obj;
+            insideFace = fr.face;
+            insideDepth = depth;
+            insideArea = area;
+        }
+        const float dx = cx - px, dy = cy - py;
+        const float d = dx * dx + dy * dy;
+        if (d < bestCentroidD ||
+            (fabsf(d - bestCentroidD) < 0.001f && depth < bestCentroidDepth))
+        {
+            bestCentroidD = d;
+            bestCentroidDepth = depth;
+            centroidObj = fr.obj;
+            centroidFace = fr.face;
+        }
+    }
+    if (insideObj >= 0)
+    {
+        outObj = insideObj;
+        outFace = insideFace;
+        return true;
+    }
+    if (centroidObj >= 0)
+    {
+        outObj = centroidObj;
+        outFace = centroidFace;
+        return true;
+    }
+    return false;
+}
+
 bool Editor::pickFace(const Viewport& vp, int px, int py, int& outObj, int& outFace)
 {
-    // search back-to-front (later objects draw on top). ortho has no depth, so
-    // resolve front/back overlap by winding, not mesh order.
-    for (int o = (int)scene.objects.size() - 1; o >= 0; o--)
+    int bestObj = -1, bestFace = -1;
+    float bestDepth = INFINITY, bestArea = 0.0f;
+    for (int o = 0; o < (int)scene.objects.size(); o++)
     {
         const Mesh& m = scene.objects[o];
-        int bestFace = -1;
-        float bestArea = 0.0f;
         for (int fi = 0; fi < (int)m.faces.size(); fi++)
         {
             const Face& f = m.faces[fi];
             float sx[4], sy[4];
+            float depth = 0.0f;
             for (int k = 0; k < 4; k++)
-                worldToScreen(vp, m.positions[f.indices[k]], sx[k], sy[k]);
+            {
+                const Vec3& p = m.positions[f.indices[k]];
+                worldToScreen(vp, p, sx[k], sy[k]);
+                depth += viewportDepth(vp, p) * 0.25f;
+            }
             if (pointInTri((float)px, (float)py, sx[0], sy[0], sx[1], sy[1], sx[2], sy[2]) ||
                 pointInTri((float)px, (float)py, sx[0], sy[0], sx[2], sy[2], sx[3], sy[3]))
             {
                 const float area = fabsf(quadSignedArea(sx, sy));
-                if (bestFace < 0 || area > bestArea)
+                if (bestFace < 0 || depth < bestDepth - 0.001f ||
+                    (fabsf(depth - bestDepth) < 0.001f &&
+                     (area > bestArea || (fabsf(area - bestArea) < 0.001f && o > bestObj))))
                 {
+                    bestObj = o;
                     bestFace = fi;
+                    bestDepth = depth;
                     bestArea = area;
                 }
             }
         }
-        if (bestFace >= 0)
-        {
-            outObj = o;
-            outFace = bestFace;
-            return true;
-        }
+    }
+    if (bestFace >= 0)
+    {
+        outObj = bestObj;
+        outFace = bestFace;
+        return true;
     }
     return false;
 }
@@ -724,12 +847,13 @@ void Editor::handleTouchDown(int px, int py)
     else if (mode == EditMode::Edit && subLevel == SubLevel::Edge)
     {
         int o, v0, v1;
-        if (pickEdge(*vp, px, py, o, v0, v1))
+        const bool pickedSelected = pickSelectedEdge(*vp, px, py, o, v0, v1);
+        if (pickedSelected || pickEdge(*vp, px, py, o, v0, v1))
         {
             pressedEdgeObj = o;
             pressedEdgeV0 = v0;
             pressedEdgeV1 = v1;
-            pressedEdgeWasSelected = scene.isEdgeSelected(o, v0, v1);
+            pressedEdgeWasSelected = pickedSelected || scene.isEdgeSelected(o, v0, v1);
             if (!pressedEdgeWasSelected)
                 scene.selectedEdges.push_back({o, v0, v1}); // greedy add
             scene.activeObject = o;
@@ -742,11 +866,12 @@ void Editor::handleTouchDown(int px, int py)
     else if (mode == EditMode::Edit && subLevel == SubLevel::Face)
     {
         int o, fi;
-        if (pickFace(*vp, px, py, o, fi))
+        const bool pickedSelected = pickSelectedFace(*vp, px, py, o, fi);
+        if (pickedSelected || pickFace(*vp, px, py, o, fi))
         {
             pressedFaceObj = o;
             pressedFaceIdx = fi;
-            pressedFaceWasSelected = scene.isFaceSelected(o, fi);
+            pressedFaceWasSelected = pickedSelected || scene.isFaceSelected(o, fi);
             if (!pressedFaceWasSelected)
                 scene.selectedFaces.push_back({o, fi}); // greedy add
             scene.activeObject = o;
