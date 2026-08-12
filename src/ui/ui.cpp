@@ -54,19 +54,17 @@ namespace
     // a button with centered text, dimmed when disabled, filled when active
     void textBtn(const Rect& r, C2D_Text* t, float th, bool enabled, bool active = false)
     {
-        C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(active ? kActiveBg : kItemBg));
-        outline(r.x, r.y, r.w, r.h, kBorderCol);
+        raisedButton(r.x, r.y, r.w, r.h, active, enabled);
         float tw, hh;
         C2D_TextGetDimensions(t, kTextScale, kTextScale, &tw, &hh);
         C2D_DrawText(t, C2D_WithColor, r.x + (r.w - tw) / 2.0f, r.y + (r.h - th) / 2.0f, 0.0f,
-                     kTextScale, kTextScale, conv(enabled ? kTextCol : kIconDim));
+                     kTextScale, kTextScale, conv(!enabled ? kIconDim : active ? kIconActive : kTextCol));
     }
 
     // a button with an icon + label, the pair centered, dimmed when disabled
     void iconTextBtn(const Rect& r, Icon ic, C2D_Text* t, float th, bool enabled)
     {
-        C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(kItemBg));
-        outline(r.x, r.y, r.w, r.h, kBorderCol);
+        raisedButton(r.x, r.y, r.w, r.h, false, enabled);
         float tw, hh;
         C2D_TextGetDimensions(t, kTextScale, kTextScale, &tw, &hh);
         float sx = r.x + (r.w - (kIcon + 4 + tw)) / 2.0f;
@@ -101,17 +99,16 @@ namespace
                 continue;
             const bool sel = i == b.selected;
             if (sel)
-                C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(kActiveBg));
+                raisedButton(r.x + 4, r.y, r.w - 8, r.h, true);
             browserText(b.entries[i].name.c_str(), r.x + 10, r.y + (r.h - browserLabelH[0]) / 2.0f,
                         sel ? kIconActive : kTextCol);
-            C2D_DrawRectSolid(r.x, r.y + r.h - 1, 0.0f, r.w, 1, conv(kBarBg));
         }
 
         if (b.entries.empty())
             browserText("No projects", 132.0f, 108.0f, kIconDim);
 
         // header
-        widgets::Bar{{0, 0, 320, ProjectBrowser::kHeaderH}}.draw();
+        widgets::Bar{{0, 0, 320, ProjectBrowser::kHeaderH}}.draw(true);
         icons::draw(Icon_Load, 8, (ProjectBrowser::kHeaderH - kIcon) / 2.0f, kIcon, kIconIdle);
         textLeft(&browserLabels[0], browserLabelH[0], 8 + kIcon + 4, 0, ProjectBrowser::kHeaderH);
         iconTextBtn(b.btnBack(), Icon_Back, &browserLabels[1], browserLabelH[1], true);
@@ -129,8 +126,7 @@ namespace
         {
             C2D_DrawRectSolid(0, 0, 0.0f, 320, 240, conv(0x00000099));
             const Rect box = b.confirmBox();
-            C2D_DrawRectSolid(box.x, box.y, 0.0f, box.w, box.h, conv(kPanelBg));
-            outline(box.x, box.y, box.w, box.h, kBorderCol);
+            raisedButton(box.x, box.y, box.w, box.h, false);
             const std::string name = hasSel ? b.entries[b.selected].name : std::string();
             const std::string msg = "Delete " + name + "?";
             C2D_Text t;
@@ -282,38 +278,38 @@ namespace ui
         }
 
         // bar backgrounds
-        widgets::Bar{layout::topBar()}.draw();
+        widgets::Bar{layout::topBar()}.draw(true);
         widgets::Bar{layout::bottomBar()}.draw();
 
         // top bar. left corner: 3D/2D workspace switch (labeled, shows current
         // workspace, tap flips). right corner: hamburger menu.
         const int wi = editor.is2D() ? 1 : 0;
-        editor.btnWorkspace.drawLabeled(wi ? Icon_Image : Icon_Box, &workspaceLabels[wi],
-                                        workspaceLabelH[wi]);
+        editor.btnWorkspace.drawRaisedTopLabeled(wi ? Icon_Image : Icon_Box, &workspaceLabels[wi],
+                                                 workspaceLabelH[wi]);
         if (editor.is2D())
         {
-            editor.btnAdd.draw(Icon_Fit);   // recenter/fit canvas
-            editor.btnDel.draw(Icon_Trash); // clear sheet
+            editor.btnAdd.drawRaisedTop(Icon_Fit);   // recenter/fit canvas
+            editor.btnDel.drawRaisedTop(Icon_Trash); // clear sheet
         }
         else
         {
-            editor.btnAdd.draw(Icon_Plus, editor.shapeMenu.open);
-            editor.btnDel.draw(Icon_Trash);
+            editor.btnAdd.drawRaisedTop(Icon_Plus, editor.shapeMenu.open);
+            editor.btnDel.drawRaisedTop(Icon_Trash);
         }
-        editor.btnUndo.draw(Icon_Undo, false, editor.hasUndo());
-        editor.btnRedo.draw(Icon_Redo, false, editor.hasRedo());
+        editor.btnUndo.drawRaisedTop(Icon_Undo, false, editor.hasUndo());
+        editor.btnRedo.drawRaisedTop(Icon_Redo, false, editor.hasRedo());
         if (editor.is3D())
         {
-            editor.btnGrid.draw(Icon_GridDefault, editor.gridMenu.open);
-            editor.btnView.draw(Icon_Eye, editor.viewMenu.open);
+            editor.btnGrid.drawRaisedTop(Icon_GridDefault, editor.gridMenu.open);
+            editor.btnView.drawRaisedTop(Icon_Eye, editor.viewMenu.open);
         }
-        editor.btnMenu.draw(Icon_Menu, editor.fileMenu.open);
+        editor.btnMenu.drawRaisedTop(Icon_Menu, editor.fileMenu.open);
 
         // bottom bar: model controls (mode + sub-switch), or texture tools
         if (editor.is3D())
         {
-            editor.btnMode.drawLabeled(kModeIcons[modeIdx], &modeLabels[modeIdx],
-                                       modeLabelH[modeIdx], editor.modeMenu.open);
+            editor.btnMode.drawRaisedLabeled(kModeIcons[modeIdx], &modeLabels[modeIdx],
+                                             modeLabelH[modeIdx], editor.modeMenu.open);
 
             // segmented tool switch for the current mode
             if (editor.mode == EditMode::Object)
@@ -329,19 +325,19 @@ namespace ui
             if (editor.mode == EditMode::Edit && editor.subLevel == SubLevel::Face)
             {
                 const bool hasFaces = !editor.scene.selectedFaces.empty();
-                editor.btnSubdivide.draw(Icon_Subdivide, false, hasFaces);
-                editor.btnExtrude.draw(Icon_Extrude, false, hasFaces);
+                editor.btnSubdivide.drawRaised(Icon_Subdivide, false, hasFaces);
+                editor.btnExtrude.drawRaised(Icon_Extrude, false, hasFaces);
             }
             // Edit/Edge verb button (right side)
             else if (editor.mode == EditMode::Edit && editor.subLevel == SubLevel::Edge)
-                editor.btnSplit.draw(Icon_Split, false, !editor.scene.selectedEdges.empty());
+                editor.btnSplit.drawRaised(Icon_Split, false, !editor.scene.selectedEdges.empty());
         }
         else
         {
             // mode button (icon + label), bottom-left
             const int texIdx = (int)editor.tex.texMode;
-            editor.tex.btnTexMode.drawLabeled(kTexModeIcons[texIdx], &texModeLabels[texIdx],
-                                              texModeLabelH[texIdx], editor.tex.texModeMenu.open);
+            editor.tex.btnTexMode.drawRaisedLabeled(kTexModeIcons[texIdx], &texModeLabels[texIdx],
+                                                   texModeLabelH[texIdx], editor.tex.texModeMenu.open);
 
             if (editor.tex.texMode == TexMode::Paint)
             {
@@ -350,8 +346,7 @@ namespace ui
                 // brush size: a white square sized to the brush (capped to the
                 // button), opens the size popup
                 const Rect& bs = editor.tex.btnBrushSize;
-                if (editor.tex.brushMenuOpen)
-                    C2D_DrawRectSolid(bs.x, bs.y, 0.0f, bs.w, bs.h, conv(kActiveBg));
+                raisedButton(bs.x, bs.y, bs.w, bs.h, editor.tex.brushMenuOpen);
                 int side = editor.tex.brushSize * 2;
                 const int maxSide = bs.h - 8;
                 if (side > maxSide) side = maxSide;
@@ -361,8 +356,8 @@ namespace ui
             }
             else
             {
-                editor.tex.btnAutoLayout.draw(Icon_Layout);
-                editor.tex.btnUvReset.draw(Icon_Fit);
+                editor.tex.btnAutoLayout.drawRaised(Icon_Layout);
+                editor.tex.btnUvReset.drawRaised(Icon_Fit);
             }
         }
 
@@ -372,8 +367,8 @@ namespace ui
             // ortho view dividers
             if (editor.maxView < 0)
             {
-                const u32 bc = conv(kBarBg);
-                const int G = 3;
+                const u32 bc = conv(kBarHighlight);
+                const int G = 1;
                 const Rect area = layout::content();
                 const Viewport& v0 = editor.viewports[0];
                 const int divY = v0.y + v0.h;
@@ -424,11 +419,11 @@ namespace ui
 
                 // maximize / restore toggle in the top corner
                 const Rect mb = editor.viewMaxBtn(vp);
-                C2D_DrawRectSolid(mb.x, mb.y, 0.0f, mb.w, mb.h, conv(0x1B1E26C0));
-                outline(mb.x, mb.y, mb.w, mb.h, kBorderCol);
-                icons::draw(editor.maxView >= 0 ? Icon_Minimize : Icon_Fit,
+                const bool maximized = editor.maxView >= 0;
+                raisedButton(mb.x, mb.y, mb.w, mb.h, maximized);
+                icons::draw(maximized ? Icon_Minimize : Icon_Fit,
                             mb.x + (mb.w - kIcon) / 2.0f, mb.y + (mb.h - kIcon) / 2.0f,
-                            kIcon, kIconIdle);
+                            kIcon, maximized ? kIconActive : kIconIdle);
             }
         }
 
@@ -436,13 +431,17 @@ namespace ui
         if (editor.colorActive())
         {
             const Rect& b = editor.btnColor;
-            C2D_DrawRectSolid(b.x, b.y, 0.0f, b.w, b.h, conv(kBarBg));
-            C2D_DrawRectSolid(b.x + 3, b.y + 3, 0.0f, b.w - 6, b.h - 6, conv(editor.paintColor));
-            outline(b.x + 3, b.y + 3, b.w - 6, b.h - 6, kBorderCol);
+            raisedButton(b.x, b.y, b.w, b.h, false);
+            C2D_DrawRectSolid(b.x + 4, b.y + 4, 0.0f, b.w - 8, b.h - 8, conv(editor.paintColor));
+            outline(b.x + 4, b.y + 4, b.w - 8, b.h - 8, kBorderCol);
         }
         // texture-mode overflow menu button (texture all / untexture all)
         else if (editor.mode == EditMode::Texture && editor.is3D())
-            editor.btnTexMenu.draw(Icon_More, editor.texActionMenu.open);
+            editor.btnTexMenu.drawRaised(Icon_More, editor.texActionMenu.open);
+
+        // continuous molded-plastic shine where each toolbar meets the content
+        widgets::Bar{layout::topBar()}.drawHighlight(true);
+        widgets::Bar{layout::bottomBar()}.drawHighlight(false);
 
         // toolbar popups on top: each widget draws itself when open (exportMenu
         // is a flyout, so file + export can both be open)
@@ -492,8 +491,7 @@ namespace ui
             const float bw = tw + pad * 2, bh = th + 6.0f;
             const float bx = 160.0f - bw / 2.0f;
             const float by = topH + 6.0f;
-            C2D_DrawRectSolid(bx, by, 0.0f, bw, bh, conv(0x11141BE0));
-            outline(bx, by, bw, bh, kBorderCol);
+            raisedButton((int)bx, (int)by, (int)bw, (int)bh, false);
             C2D_DrawText(&t, C2D_WithColor, bx + pad, by + 3.0f, 0.0f,
                          kTextScale, kTextScale, conv(kTextCol));
         }
@@ -502,8 +500,7 @@ namespace ui
         if (editor.colorPickerOpen)
         {
             const Rect panel = editor.pickerPanel();
-            C2D_DrawRectSolid(panel.x, panel.y, 0.0f, panel.w, panel.h, conv(kPanelBg));
-            outline(panel.x, panel.y, panel.w, panel.h, kBorderCol);
+            raisedButton(panel.x, panel.y, panel.w, panel.h, false);
 
             // palette presets
             for (int i = 0; i < kPaletteCount; i++)
@@ -543,8 +540,7 @@ namespace ui
         if (editor.is2D() && editor.tex.brushMenuOpen)
         {
             const Rect p = editor.tex.brushMenu();
-            C2D_DrawRectSolid(p.x, p.y, 0.0f, p.w, p.h, conv(kPanelBg));
-            outline(p.x, p.y, p.w, p.h, kBorderCol);
+            raisedButton(p.x, p.y, p.w, p.h, false);
 
             const Rect tr = editor.tex.brushTrack();
             const int cx = tr.x + tr.w / 2;
@@ -552,8 +548,7 @@ namespace ui
             outline(cx - 1, tr.y, 2, tr.h, kBorderCol);
             const float t = (float)(editor.tex.brushSize - 1) / (TextureEditor::kMaxBrush - 1);
             const int hy2 = tr.y + tr.h - (int)(t * tr.h);
-            C2D_DrawRectSolid(tr.x, hy2 - 3, 0.0f, tr.w, 6, conv(kActiveBg));
-            outline(tr.x, hy2 - 3, tr.w, 6, kBorderCol);
+            raisedButton(tr.x + 3, hy2 - 3, tr.w - 6, 6, true);
 
             // size in px, centered below the track
             char buf[8];

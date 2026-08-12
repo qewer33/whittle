@@ -30,9 +30,11 @@ namespace widgets
 
         void draw(const bool* on = nullptr) const; // on[i] highlights row i
 
-        // returns the picked row, or -1 on a miss. closes on dismiss, and on pick
-        // unless closeOnPick is false.
+        // returns the picked row, or -1 on a miss. dismissal is applied on
+        // finishTouch(), and picks stay open when closeOnPick is false.
         int handle(int px, int py);
+        void finishTouch();
+        void cancelClose() { closePending_ = false; }
 
     private:
         Rect anchor_{};
@@ -44,5 +46,7 @@ namespace widgets
         std::vector<C2D_Text> labels_;
         std::vector<float> labelH_;
         static constexpr int kItemH = 26;
+        bool closePending_ = false;
+        int pressedItem_ = -1;
     };
 }

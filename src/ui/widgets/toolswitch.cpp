@@ -13,8 +13,7 @@ namespace widgets
         {
             const Rect r = layout::segCell(i, n);
             const bool on = i == active;
-            C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(on ? kActiveBg : kItemBg));
-            outline(r.x, r.y, r.w, r.h, kBorderCol);
+            raisedButton(r.x, r.y, r.w, r.h, on);
             icons::draw(icons_[i], r.x + (r.w - kIcon) / 2.0f, r.y + (r.h - kIcon) / 2.0f, kIcon,
                         on ? kIconActive : kIconIdle);
         }

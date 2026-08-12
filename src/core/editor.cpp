@@ -76,22 +76,23 @@ Editor::Editor()
 
     // top bar: 3D/2D workspace switch (left), add, del, undo, redo cluster,
     // grid/view toggles + hamburger menu (right)
-    const int bw = 30, ws = 52;
+    const int topBw = 26, ws = 52;
     btnWorkspace = {0, 0, ws, TB}; // labeled switch, top-left corner
-    btnAdd = {ws + 4, 0, bw, TB};
-    btnDel = {ws + 4 + bw, 0, bw, TB};
-    btnUndo = {ws + 8 + 2 * bw, 0, bw, TB};
-    btnRedo = {ws + 8 + 3 * bw, 0, bw, TB};
-    btnMenu = {320 - bw, 0, bw, TB};        // hamburger, top-right corner
-    btnView = {320 - 2 * bw - 4, 0, bw, TB}; // view toggles popup (3D workspace)
-    btnGrid = {320 - 3 * bw - 8, 0, bw, TB}; // grid spacing popup (3D workspace)
+    btnAdd = {ws + 4, 0, topBw, TB};
+    btnDel = {ws + 4 + topBw, 0, topBw, TB};
+    btnUndo = {ws + 8 + 2 * topBw, 0, topBw, TB};
+    btnRedo = {ws + 8 + 3 * topBw, 0, topBw, TB};
+    btnMenu = {320 - topBw, 0, topBw, TB};        // hamburger, top-right corner
+    btnView = {320 - 2 * topBw - 4, 0, topBw, TB}; // view toggles popup (3D workspace)
+    btnGrid = {320 - 3 * topBw - 8, 0, topBw, TB}; // grid spacing popup (3D workspace)
 
     // bottom bar: mode button (icon+text) left, the tool switch centered
+    const int bw = 26;
     const int by = 240 - BB;
     btnMode = {0, by, 84, BB};
     // edit/face verbs, right side: subdivide, extrude
     btnExtrude = {320 - bw, by, bw, BB};
-    btnSubdivide = {320 - 2 * bw - 4, by, bw, BB};
+    btnSubdivide = {320 - 2 * bw, by, bw, BB};
     // edit/edge verb, right side: split
     btnSplit = {320 - bw, by, bw, BB};
     // paint/texture: the active-color button (opens the picker), far right
@@ -558,7 +559,12 @@ void Editor::handleTouchDown(int px, int py)
         const int r = fileMenu.handle(px, py);
         if (r == 0) pendingFileOp = FileOp::Save;
         else if (r == 1) pendingFileOp = FileOp::Load;
-        else if (r == 2) { fileMenu.open = true; exportMenu.open = true; } // keep parent, fly out
+        else if (r == 2)
+        {
+            fileMenu.open = true;
+            fileMenu.cancelClose(); // keep parent open while the export flyout opens
+            exportMenu.open = true;
+        }
         else if (r == 3) wantQuit = true;
         return;
     }
@@ -1224,6 +1230,15 @@ void Editor::handleTouchUp(int px, int py)
         return;
     touching = false;
     pickingSv = pickingHue = false;
+
+    modeMenu.finishTouch();
+    shapeMenu.finishTouch();
+    fileMenu.finishTouch();
+    exportMenu.finishTouch();
+    viewMenu.finishTouch();
+    gridMenu.finishTouch();
+    texActionMenu.finishTouch();
+    tex.texModeMenu.finishTouch();
 
     if (is2D())
     {

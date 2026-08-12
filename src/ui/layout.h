@@ -20,7 +20,7 @@ namespace layout
     // bottom bar. shared by draw and hit-test so they agree.
     inline Rect segCell(int i, int count)
     {
-        constexpr int segW = 44, segPad = 3;
+        constexpr int segW = 40, segPad = 3;
         const int x0 = kScreenW / 2 - count * segW / 2;
         return {x0 + i * segW, kBottomBarY + segPad, segW, kBarH - 2 * segPad};
     }

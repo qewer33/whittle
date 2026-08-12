@@ -23,14 +23,14 @@ static bool pointInTri(float px, float py, float ax, float ay, float bx,
 
 void TextureEditor::layout()
 {
-    const int bw = 30, BB = layout::kBarH;
+    const int bw = 26, BB = layout::kBarH;
     const int by = layout::kBottomBarY;
     btnTexMode = {0, by, 84, BB};
     // paint: brush/fill/eyedropper are the centered toolSwitch, brush size sits
     // left of the far-right color button (owned by Editor)
-    btnBrushSize = {320 - 2 * bw - 4, by, bw, BB};
+    btnBrushSize = {320 - 2 * bw, by, bw, BB};
     // uv tools, right-aligned: auto-layout, fit
-    btnAutoLayout = {320 - 2 * bw - 4, by, bw, BB};
+    btnAutoLayout = {320 - 2 * bw, by, bw, BB};
     btnUvReset = {320 - bw, by, bw, BB};
 
     texModeMenu.setup(btnTexMode, widgets::Placement::Above, widgets::Align::Start, 90,

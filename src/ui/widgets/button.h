@@ -12,5 +12,11 @@ namespace widgets
     {
         void draw(Icon ic, bool active = false, bool enabled = true) const;
         void drawLabeled(Icon ic, const C2D_Text* label, float labelH, bool active = false) const;
+        void drawRaised(Icon ic, bool active = false, bool enabled = true) const;
+        void drawRaisedLabeled(Icon ic, const C2D_Text* label, float labelH,
+                              bool active = false) const;
+        void drawRaisedTop(Icon ic, bool active = false, bool enabled = true) const;
+        void drawRaisedTopLabeled(Icon ic, const C2D_Text* label, float labelH,
+                                 bool active = false) const;
     };
 }

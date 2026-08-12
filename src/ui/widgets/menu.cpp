@@ -51,15 +51,23 @@ namespace widgets
     void Menu::draw(const bool* on) const
     {
         const int n = count();
+        if (n == 0)
+            return;
+
+        const Rect first = itemRect(0);
+        raisedButton(first.x, first.y - 1, first.w, n * kItemH + 2, false);
         for (int i = 0; i < n; i++)
         {
             const Rect r = itemRect(i);
-            const bool hi = on && on[i];
-            C2D_DrawRectSolid(r.x, r.y, 0.0f, r.w, r.h, conv(hi ? kActiveBg : kItemBg));
-            outline(r.x, r.y, r.w, r.h, kBorderCol);
-            icons::draw(icons_[i], r.x + 5, r.y + (r.h - kIcon) / 2.0f, kIcon,
+            const bool hi = (on && on[i]) || i == pressedItem_;
+            const Rect body = {r.x + 1, r.y, r.w - 2, r.h};
+            if (hi)
+                raisedButton(body.x, body.y, body.w, body.h, true);
+            icons::draw(icons_[i], body.x + 5, body.y + (body.h - kIcon) / 2.0f, kIcon,
                         hi ? kIconActive : kIconIdle);
-            textLeft(&labels_[i], labelH_[i], r.x + 5 + kIcon + 4, r.y, r.h);
+            C2D_DrawText(&labels_[i], C2D_WithColor, body.x + 5 + kIcon + 4,
+                         body.y + (body.h - labelH_[i]) / 2.0f, 0.0f, kTextScale,
+                         kTextScale, conv(hi ? kIconActive : kTextCol));
         }
     }
 
@@ -68,11 +76,21 @@ namespace widgets
         for (int i = 0; i < count(); i++)
             if (itemRect(i).contains(px, py))
             {
+                pressedItem_ = i;
                 if (closeOnPick_)
-                    open = false;
+                    closePending_ = true;
                 return i;
             }
-        open = false; // tapped outside
+        pressedItem_ = -1;
+        closePending_ = true; // tapped outside; dismiss on touch-up
         return -1;
+    }
+
+    void Menu::finishTouch()
+    {
+        if (closePending_)
+            open = false;
+        closePending_ = false;
+        pressedItem_ = -1;
     }
 }
