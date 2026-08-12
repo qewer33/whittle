@@ -36,7 +36,7 @@ struct Renderer
     // line pass. mvp maps world to ndc, bufW/bufH are the target's framebuffer
     // dims (240x400 top, 240x320 bottom), used to scale line width into ndc
     void drawLineSet(const Line* lines, int count, const C3D_Mtx& mvp,
-                     u32 color, int bufW, int bufH);
+                     u32 color, int bufW, int bufH, float widthPx = 2.0f);
 
     // clip to a bottom-screen display rect (320x240, y-down). call
     // clearScissor() before any full-screen draw (the citro2d pass, next frame)

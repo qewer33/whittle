@@ -300,6 +300,7 @@ namespace ui
         editor.btnRedo.drawRaisedTop(Icon_Redo, false, editor.hasRedo());
         if (editor.is3D())
         {
+            editor.btnSelect.drawRaisedTop(Icon_Select, editor.selectMenu.open);
             editor.btnGrid.drawRaisedTop(Icon_GridDefault, editor.gridMenu.open);
             editor.btnView.drawRaisedTop(Icon_Eye, editor.viewMenu.open);
         }
@@ -425,6 +426,14 @@ namespace ui
                             mb.x + (mb.w - kIcon) / 2.0f, mb.y + (mb.h - kIcon) / 2.0f,
                             kIcon, maximized ? kIconActive : kIconIdle);
             }
+
+            // rubber-band box overlay
+            Rect box;
+            if (editor.boxSelectRect(box))
+            {
+                C2D_DrawRectSolid(box.x, box.y, 0.0f, box.w, box.h, conv(0xFFD24A38));
+                outline(box.x, box.y, box.w, box.h, 0xFFD24AFF);
+            }
         }
 
         // active-color button (opens the picker) in paint contexts
@@ -459,8 +468,8 @@ namespace ui
             editor.exportMenu.draw();
         if (editor.viewMenu.open)
         {
-            const bool on[Editor::kNumView] = {editor.wireframe, editor.showFaces,
-                                               editor.flipViews, editor.shading};
+            const bool on[Editor::kNumView] = {editor.shading, editor.wireframe,
+                                               editor.showFaces, editor.flipViews};
             editor.viewMenu.draw(on);
         }
         if (editor.gridMenu.open)
@@ -468,6 +477,12 @@ namespace ui
             bool on[Editor::kNumGrid] = {};
             on[(int)editor.gridPreset] = true;
             editor.gridMenu.draw(on);
+        }
+        if (editor.selectMenu.open)
+        {
+            const bool on[Editor::kNumSelect] = {editor.greedySelect, editor.boxSelect,
+                                                 editor.deepSelect};
+            editor.selectMenu.draw(on);
         }
         if (editor.texActionMenu.open)
             editor.texActionMenu.draw();

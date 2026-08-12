@@ -47,6 +47,10 @@ enum Icon
     Icon_GridDefault,
     Icon_GridDouble,
     Icon_GridOff,
+    Icon_Select,
+    Icon_SelGreedy,
+    Icon_SelBox,
+    Icon_SelDeep,
     Icon_Count,
 };
 

@@ -23,7 +23,8 @@ namespace widgets
         bool open = false;
 
         void setup(Rect anchor, Placement place, Align align, int width,
-                   std::initializer_list<MenuItem> items, bool closeOnPick = true);
+                   std::initializer_list<MenuItem> items, bool closeOnPick = true,
+                   const char* title = nullptr);
 
         int count() const { return (int)icons_.size(); }
         Rect itemRect(int i) const;
@@ -45,8 +46,16 @@ namespace widgets
         std::vector<Icon> icons_;
         std::vector<C2D_Text> labels_;
         std::vector<float> labelH_;
-        static constexpr int kItemH = 26;
+        bool hasTitle_ = false;
+        C2D_Text title_{};
+        float titleH_ = 0.0f;
+        static constexpr int kItemH = 24;
+        static constexpr int kHeaderH = 22;
         bool closePending_ = false;
         int pressedItem_ = -1;
+
+        int headerH() const { return hasTitle_ ? kHeaderH : 0; }
+        int leftX() const;
+        int topY() const;
     };
 }

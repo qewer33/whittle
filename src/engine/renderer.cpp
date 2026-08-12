@@ -346,7 +346,7 @@ void Renderer::drawFaces(const Mesh& mesh, const C3D_Mtx& mvp, GPU_CULLMODE cull
 }
 
 void Renderer::drawLineSet(const Line* lines, int count, const C3D_Mtx& mvp,
-                           u32 color, int bufW, int bufH)
+                           u32 color, int bufW, int bufH, float widthPx)
 {
     if (count <= 0)
         return;
@@ -358,7 +358,7 @@ void Renderer::drawLineSet(const Line* lines, int count, const C3D_Mtx& mvp,
         (color & 0xFF) / 255.0f,
     };
 
-    const float halfW = 1.0f; // 2px total width
+    const float halfW = widthPx * 0.5f;
     wireNeeded_ += (u32)count * 6;
     // clamp to room left in the shared vbo this frame
     const u32 roomQuads = (wireCap_ - wireVertOffset_) / 6;

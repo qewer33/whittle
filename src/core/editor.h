@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cstdlib>
 #include <3ds.h>
 #include "scene.h"
 #include "rect.h"
@@ -65,6 +67,7 @@ struct Editor
     static constexpr int kNumMenu = 4;   // save, load, export, exit
     static constexpr int kNumView = 4;   // wireframe, faces, flip, shading
     static constexpr int kNumGrid = 4;   // half, current, double, off
+    static constexpr int kNumSelect = 3; // greedy, box, deep
     static constexpr int kNumTexActions = 2; // texture all, untexture all
     static constexpr int kNumExport = 2; // obj, stl
 
@@ -123,14 +126,20 @@ struct Editor
     bool shading = true;   // soft flat shading on the preview
     GridPreset gridPreset = GridPreset::Current;
 
+    // Selection menu toggles
+    bool greedySelect = true; // off: a pick replaces instead of adding
+    bool boxSelect = false;   // drag empty space to rubber-band select
+    bool deepSelect = false;  // a vert pick grabs its whole depth column
+
     // toolbar popups (each owns its layout/draw/hit-test). only one is open at a
     // time, except exportMenu which flies out over an open fileMenu. the texture
     // workspace's paint/uv menu lives in `tex`.
-    widgets::Menu modeMenu, shapeMenu, fileMenu, exportMenu, viewMenu, gridMenu, texActionMenu;
+    widgets::Menu modeMenu, shapeMenu, fileMenu, exportMenu, viewMenu, gridMenu, selectMenu,
+        texActionMenu;
     void closeMenus()
     {
         modeMenu.open = shapeMenu.open = fileMenu.open = exportMenu.open = viewMenu.open =
-            gridMenu.open = texActionMenu.open = false;
+            gridMenu.open = selectMenu.open = texActionMenu.open = false;
     }
 
     bool wantQuit = false; // set by Exit, main loop breaks on it
@@ -154,9 +163,19 @@ struct Editor
     }
     void toggleMax(int i);
 
+    // rubber-band rect for the UI to draw, false when not box-selecting
+    bool boxSelectRect(Rect& out) const
+    {
+        if (!boxSelecting)
+            return false;
+        const int x = std::min(boxX0, boxX1), y = std::min(boxY0, boxY1);
+        out = {x, y, std::abs(boxX1 - boxX0), std::abs(boxY1 - boxY0)};
+        return true;
+    }
+
     // toolbar buttons, laid out in the ctor
     widgets::Button btnMenu, btnAdd, btnDel, btnUndo, btnRedo; // top bar
-    widgets::Button btnView, btnGrid, btnWorkspace;             // top bar, right
+    widgets::Button btnView, btnGrid, btnSelect, btnWorkspace;  // top bar, right
     widgets::Button btnMode;                                   // bottom bar, left (model)
     widgets::Button btnExtrude, btnSubdivide;                  // bottom bar, right (edit/face)
     widgets::Button btnSplit;                                  // bottom bar, right (edit/edge)
@@ -242,10 +261,17 @@ private:
     int panViewport = -1;
     int lastPanPx = 0, lastPanPy = 0;
 
+    // rubber-band box drag
+    bool boxSelecting = false;
+    int boxViewport = -1;
+    int boxX0 = 0, boxY0 = 0, boxX1 = 0, boxY1 = 0; // screen-space rect corners
+    void applyBoxSelect();
+
     bool pickingSv = false, pickingHue = false; // dragging in the color picker
 
     Viewport* viewportAt(int px, int py);
     bool pickVertexAny(const Viewport& vp, int px, int py, int& outObj, int& outVert);
+    void addVertColumn(const Viewport& vp, int obj, int vert); // deep select
     bool pickSelectedEdge(const Viewport& vp, int px, int py, int& outObj, int& outV0, int& outV1);
     bool pickEdge(const Viewport& vp, int px, int py, int& outObj, int& outV0, int& outV1);
     bool pickSelectedFace(const Viewport& vp, int px, int py, int& outObj, int& outFace);

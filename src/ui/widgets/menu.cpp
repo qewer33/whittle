@@ -6,13 +6,22 @@ using namespace uidraw;
 namespace widgets
 {
     void Menu::setup(Rect anchor, Placement place, Align align, int width,
-                     std::initializer_list<MenuItem> items, bool closeOnPick)
+                     std::initializer_list<MenuItem> items, bool closeOnPick,
+                     const char* title)
     {
         anchor_ = anchor;
         place_ = place;
         align_ = align;
         width_ = width;
         closeOnPick_ = closeOnPick;
+        hasTitle_ = title != nullptr;
+        if (hasTitle_)
+        {
+            C2D_TextParse(&title_, labelBuf(), title);
+            C2D_TextOptimize(&title_);
+            float w;
+            C2D_TextGetDimensions(&title_, kTextScale, kTextScale, &w, &titleH_);
+        }
         icons_.clear();
         labels_.clear();
         labelH_.clear();
@@ -29,23 +38,25 @@ namespace widgets
         }
     }
 
+    int Menu::leftX() const
+    {
+        if (place_ == Placement::LeftOf)
+            return anchor_.x - width_;
+        return align_ == Align::Start ? anchor_.x : anchor_.x + anchor_.w - width_;
+    }
+
+    int Menu::topY() const
+    {
+        if (place_ == Placement::Above)
+            return anchor_.y - (headerH() + count() * kItemH);
+        if (place_ == Placement::LeftOf)
+            return anchor_.y;
+        return anchor_.y + anchor_.h;
+    }
+
     Rect Menu::itemRect(int i) const
     {
-        int x;
-        if (place_ == Placement::LeftOf)
-            x = anchor_.x - width_;
-        else
-            x = align_ == Align::Start ? anchor_.x : anchor_.x + anchor_.w - width_;
-
-        int y;
-        if (place_ == Placement::Above)
-            y = anchor_.y - count() * kItemH + i * kItemH;
-        else if (place_ == Placement::LeftOf)
-            y = anchor_.y + i * kItemH;
-        else
-            y = anchor_.y + anchor_.h + i * kItemH;
-
-        return {x, y, width_, kItemH};
+        return {leftX(), topY() + headerH() + i * kItemH, width_, kItemH};
     }
 
     void Menu::draw(const bool* on) const
@@ -54,8 +65,16 @@ namespace widgets
         if (n == 0)
             return;
 
-        const Rect first = itemRect(0);
-        raisedButton(first.x, first.y - 1, first.w, n * kItemH + 2, false);
+        raisedButton(leftX(), topY() - 1, width_, headerH() + n * kItemH + 2, false);
+
+        if (hasTitle_)
+        {
+            const int hx = leftX(), hy = topY();
+            C2D_DrawText(&title_, C2D_WithColor, hx + 7,
+                         hy + (kHeaderH - titleH_) / 2.0f, 0.0f, kTextScale, kTextScale,
+                         conv(kIconIdle));
+            C2D_DrawRectSolid(hx, hy + kHeaderH - 1, 0.0f, width_, 1, conv(kBarHighlight));
+        }
         for (int i = 0; i < n; i++)
         {
             const Rect r = itemRect(i);

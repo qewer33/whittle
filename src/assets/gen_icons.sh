@@ -52,6 +52,10 @@ icons=(
   "39_grid_default:grid-3x3"
   "40_grid_double:zoom-out"
   "41_grid_off:eye-off"
+  "42_select:square-dashed-mouse-pointer"
+  "43_sel_greedy:copy-plus"
+  "44_sel_box:square-dashed"
+  "45_sel_deep:send-to-back"
 )
 
 tmp="$(mktemp -d)"

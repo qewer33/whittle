@@ -84,7 +84,8 @@ Editor::Editor()
     btnRedo = {ws + 8 + 3 * topBw, 0, topBw, TB};
     btnMenu = {320 - topBw, 0, topBw, TB};        // hamburger, top-right corner
     btnView = {320 - 2 * topBw - 4, 0, topBw, TB}; // view toggles popup (3D workspace)
-    btnGrid = {320 - 3 * topBw - 8, 0, topBw, TB}; // grid spacing popup (3D workspace)
+    btnGrid = {320 - 3 * topBw - 4, 0, topBw, TB}; // grid spacing popup (3D workspace)
+    btnSelect = {320 - 4 * topBw - 4, 0, topBw, TB}; // selection behavior popup (3D workspace)
 
     // bottom bar: mode button (icon+text) left, the tool switch centered
     const int bw = 26;
@@ -101,24 +102,31 @@ Editor::Editor()
     btnTexMenu = {320 - bw, by, bw, BB};
 
     // toolbar popups. each anchors to its button and lays itself out.
-    modeMenu.setup(btnMode, Placement::Above, Align::Start, 90,
+    modeMenu.setup(btnMode, Placement::Above, Align::Start, btnMode.w,
                    {{Icon_Box, "Object"}, {Icon_Pencil, "Edit"}, {Icon_Paint, "Paint"},
-                    {Icon_Texture, "Texture"}});
+                    {Icon_Texture, "Texture"}},
+                   true, "Mode");
     shapeMenu.setup(btnAdd, Placement::Below, Align::Start, 90,
                     {{Icon_Box, "Cube"}, {Icon_Circle, "Sphere"}, {Icon_Pyramid, "Pyramid"},
-                     {Icon_Cylinder, "Cylinder"}, {Icon_Square, "Plane"}});
+                     {Icon_Cylinder, "Cylinder"}, {Icon_Square, "Plane"}},
+                    true, "Add Object");
     fileMenu.setup(btnMenu, Placement::Below, Align::End, 90,
                    {{Icon_Save, "Save"}, {Icon_Load, "Load"}, {Icon_Export, "Export"},
-                    {Icon_Exit, "Exit"}});
+                    {Icon_Exit, "Exit"}},
+                   true, "Menu");
     exportMenu.setup(fileMenu.itemRect(2), Placement::LeftOf, Align::Start, 90,
                      {{Icon_Export, "OBJ"}, {Icon_Export, "STL"}});
     viewMenu.setup(btnView, Placement::Below, Align::End, 90,
-                   {{Icon_Box, "Wireframe"}, {Icon_Square, "Faces"}, {Icon_Flip, "Flip"},
-                    {Icon_Shade, "Shading"}},
-                   false); // toggles: stay open on pick
+                   {{Icon_Shade, "Shading"}, {Icon_Box, "Wireframe"}, {Icon_Square, "Faces"},
+                    {Icon_Flip, "Flip"}},
+                   false, "View"); // toggles: stay open on pick
     gridMenu.setup(btnGrid, Placement::Below, Align::End, 90,
                    {{Icon_GridHalf, "Half"}, {Icon_GridDefault, "Default"},
-                    {Icon_GridDouble, "Double"}, {Icon_GridOff, "Off"}});
+                    {Icon_GridDouble, "Double"}, {Icon_GridOff, "Off"}},
+                   true, "Grid");
+    selectMenu.setup(btnSelect, Placement::Below, Align::End, 90,
+                     {{Icon_SelGreedy, "Greedy"}, {Icon_SelBox, "Box"}, {Icon_SelDeep, "Deep"}},
+                     false, "Selection"); // toggles: stay open on pick
     texActionMenu.setup(btnTexMenu, Placement::Above, Align::End, 112,
                         {{Icon_Texture, "Texture All"}, {Icon_Eraser, "Untexture All"}});
 
@@ -272,6 +280,138 @@ bool Editor::pickVertexAny(const Viewport& vp, int px, int py, int& outObj, int&
     outObj = bestObj;
     outVert = bestVert;
     return bestVert >= 0;
+}
+
+// add the whole screen-space depth column stacked behind (obj,vert)
+void Editor::addVertColumn(const Viewport& vp, int obj, int vert)
+{
+    if (obj < 0 || obj >= (int)scene.objects.size())
+        return;
+    float sx, sy;
+    worldToScreen(vp, scene.objects[obj].positions[vert], sx, sy);
+    const float r2 = kSelectRadiusPx * kSelectRadiusPx;
+    for (int o = 0; o < (int)scene.objects.size(); o++)
+    {
+        const Mesh& m = scene.objects[o];
+        for (int i = 0; i < (int)m.positions.size(); i++)
+        {
+            float vx, vy;
+            worldToScreen(vp, m.positions[i], vx, vy);
+            const float dx = vx - sx, dy = vy - sy;
+            if (dx * dx + dy * dy <= r2 && !scene.isVertSelected(o, i))
+                scene.selectedVerts.push_back({o, i});
+        }
+    }
+}
+
+// select every sub-object whose screen projection lands inside the box
+void Editor::applyBoxSelect()
+{
+    if (boxViewport < 0)
+        return;
+    const Viewport& vp = viewports[boxViewport];
+    const int x0 = std::min(boxX0, boxX1), x1 = std::max(boxX0, boxX1);
+    const int y0 = std::min(boxY0, boxY1), y1 = std::max(boxY0, boxY1);
+    const bool tap = (x1 - x0) < kDragThresholdPx && (y1 - y0) < kDragThresholdPx;
+    const bool objMode = (mode == EditMode::Object);
+
+    // tap clears, replace drag clears before adding
+    if (tap || !greedySelect)
+    {
+        if (objMode) scene.selectedObjects.clear();
+        else if (subLevel == SubLevel::Vertex) scene.selectedVerts.clear();
+        else if (subLevel == SubLevel::Edge) scene.selectedEdges.clear();
+        else if (subLevel == SubLevel::Face) scene.selectedFaces.clear();
+    }
+    if (tap)
+        return;
+
+    auto inBox = [&](const Vec3& p) {
+        float sx, sy;
+        worldToScreen(vp, p, sx, sy);
+        return sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1;
+    };
+
+    if (objMode)
+    {
+        // object hit if any vert lands in the box
+        for (int o = 0; o < (int)scene.objects.size(); o++)
+        {
+            const Mesh& m = scene.objects[o];
+            bool any = false;
+            for (const Vec3& p : m.positions)
+                if (inBox(p)) { any = true; break; }
+            if (any && !scene.isObjectSelected(o))
+                scene.selectedObjects.push_back(o);
+        }
+        return;
+    }
+
+    // hidden = a nearer vert sits in the same screen column
+    auto occluded = [&](int obj, int vert) {
+        const Vec3& p = scene.objects[obj].positions[vert];
+        float sx, sy;
+        worldToScreen(vp, p, sx, sy);
+        const float depth = viewportDepth(vp, p);
+        const float r2 = kSelectRadiusPx * kSelectRadiusPx;
+        for (int o = 0; o < (int)scene.objects.size(); o++)
+        {
+            const Mesh& m = scene.objects[o];
+            for (int i = 0; i < (int)m.positions.size(); i++)
+            {
+                if (o == obj && i == vert) continue;
+                float vx, vy;
+                worldToScreen(vp, m.positions[i], vx, vy);
+                const float dx = vx - sx, dy = vy - sy;
+                if (dx * dx + dy * dy <= r2 &&
+                    viewportDepth(vp, m.positions[i]) < depth - 0.001f)
+                    return true;
+            }
+        }
+        return false;
+    };
+
+    for (int o = 0; o < (int)scene.objects.size(); o++)
+    {
+        const Mesh& m = scene.objects[o];
+        if (subLevel == SubLevel::Vertex)
+        {
+            for (int i = 0; i < (int)m.positions.size(); i++)
+            {
+                if (!inBox(m.positions[i]))
+                    continue;
+                if (!deepSelect && occluded(o, i))
+                    continue; // box-only skips hidden verts
+                if (!scene.isVertSelected(o, i))
+                    scene.selectedVerts.push_back({o, i});
+            }
+        }
+        else if (subLevel == SubLevel::Edge)
+        {
+            for (const Face& f : m.faces)
+                for (int k = 0; k < 4; k++)
+                {
+                    const int a = f.indices[k], b = f.indices[(k + 1) & 3];
+                    if (a == b) continue; // degenerate edge (tri stored as a quad)
+                    if (inBox(m.positions[a]) && inBox(m.positions[b]) &&
+                        !scene.isEdgeSelected(o, a, b))
+                        scene.selectedEdges.push_back({o, a, b});
+                }
+        }
+        else if (subLevel == SubLevel::Face)
+        {
+            for (int fi = 0; fi < (int)m.faces.size(); fi++)
+            {
+                const Face& f = m.faces[fi];
+                // face hit only when all verts are inside
+                bool all = true;
+                for (int k = 0; k < 4; k++)
+                    if (!inBox(m.positions[f.indices[k]])) { all = false; break; }
+                if (all && !scene.isFaceSelected(o, fi))
+                    scene.selectedFaces.push_back({o, fi});
+            }
+        }
+    }
 }
 
 // shortest distance from a point to a segment, screen space
@@ -588,10 +728,10 @@ void Editor::handleTouchDown(int px, int py)
     if (viewMenu.open) // toggles: stay open, flip the picked flag
     {
         const int r = viewMenu.handle(px, py);
-        if (r == 0) wireframe = !wireframe;
-        else if (r == 1) showFaces = !showFaces;
-        else if (r == 2) { flipViews = !flipViews; applyFlip(); }
-        else if (r == 3) shading = !shading;
+        if (r == 0) shading = !shading;
+        else if (r == 1) wireframe = !wireframe;
+        else if (r == 2) showFaces = !showFaces;
+        else if (r == 3) { flipViews = !flipViews; applyFlip(); }
         return;
     }
     if (gridMenu.open)
@@ -599,6 +739,14 @@ void Editor::handleTouchDown(int px, int py)
         const int r = gridMenu.handle(px, py);
         if (r >= 0)
             gridPreset = (GridPreset)r;
+        return;
+    }
+    if (selectMenu.open) // toggles: stay open, flip the picked flag
+    {
+        const int r = selectMenu.handle(px, py);
+        if (r == 0) greedySelect = !greedySelect;
+        else if (r == 1) boxSelect = !boxSelect;
+        else if (r == 2) deepSelect = !deepSelect;
         return;
     }
     if (texActionMenu.open)
@@ -672,6 +820,7 @@ void Editor::handleTouchDown(int px, int py)
     if (btnRedo.contains(px, py)) { scene.redo(); return; }
     if (is3D() && btnGrid.contains(px, py)) { const bool willOpen = !gridMenu.open; closeMenus(); gridMenu.open = willOpen; return; }
     if (is3D() && btnView.contains(px, py)) { const bool willOpen = !viewMenu.open; closeMenus(); viewMenu.open = willOpen; return; }
+    if (is3D() && btnSelect.contains(px, py)) { const bool willOpen = !selectMenu.open; closeMenus(); selectMenu.open = willOpen; return; }
 
     // active-color button (paint contexts) opens the picker
     if (colorActive() && btnColor.contains(px, py))
@@ -842,13 +991,20 @@ void Editor::handleTouchDown(int px, int py)
             pressedVertIdx = v;
             pressedVertWasSelected = scene.isVertSelected(o, v);
             if (!pressedVertWasSelected)
-                scene.selectedVerts.push_back({o, v}); // greedy add
+            {
+                if (!greedySelect)
+                    scene.selectedVerts.clear();  // replace mode
+                scene.selectedVerts.push_back({o, v});
+                if (deepSelect)
+                    addVertColumn(*vp, o, v);
+            }
             scene.activeObject = o;
             pressedSub = true;
             subDragViewport = vpIndex;
             return;
         }
-        scene.selectedVerts.clear();
+        if (!boxSelect)
+            scene.selectedVerts.clear();
     }
     else if (mode == EditMode::Edit && subLevel == SubLevel::Edge)
     {
@@ -861,13 +1017,18 @@ void Editor::handleTouchDown(int px, int py)
             pressedEdgeV1 = v1;
             pressedEdgeWasSelected = pickedSelected || scene.isEdgeSelected(o, v0, v1);
             if (!pressedEdgeWasSelected)
-                scene.selectedEdges.push_back({o, v0, v1}); // greedy add
+            {
+                if (!greedySelect)
+                    scene.selectedEdges.clear();  // replace mode
+                scene.selectedEdges.push_back({o, v0, v1});
+            }
             scene.activeObject = o;
             pressedSub = true;
             subDragViewport = vpIndex;
             return;
         }
-        scene.selectedEdges.clear();
+        if (!boxSelect)
+            scene.selectedEdges.clear();
     }
     else if (mode == EditMode::Edit && subLevel == SubLevel::Face)
     {
@@ -879,13 +1040,18 @@ void Editor::handleTouchDown(int px, int py)
             pressedFaceIdx = fi;
             pressedFaceWasSelected = pickedSelected || scene.isFaceSelected(o, fi);
             if (!pressedFaceWasSelected)
-                scene.selectedFaces.push_back({o, fi}); // greedy add
+            {
+                if (!greedySelect)
+                    scene.selectedFaces.clear();  // replace mode
+                scene.selectedFaces.push_back({o, fi});
+            }
             scene.activeObject = o;
             pressedSub = true;
             subDragViewport = vpIndex;
             return;
         }
-        scene.selectedFaces.clear();
+        if (!boxSelect)
+            scene.selectedFaces.clear();
     }
     else if (mode == EditMode::Object)
     {
@@ -915,7 +1081,11 @@ void Editor::handleTouchDown(int px, int py)
             pressedObject = hitObj;
             pressedObjWasSelected = scene.isObjectSelected(hitObj);
             if (!pressedObjWasSelected)
+            {
+                if (!greedySelect)
+                    scene.selectedObjects.clear();  // replace mode
                 scene.selectedObjects.push_back(hitObj);
+            }
             scene.activeObject = hitObj;
             // free plane-drag on the body is a Move-tool convenience only, rotate
             // and scale go through their gizmo handles
@@ -923,10 +1093,19 @@ void Editor::handleTouchDown(int px, int py)
                 objDragViewport = vpIndex;
             return;
         }
-        scene.selectedObjects.clear();
+        if (!boxSelect)
+            scene.selectedObjects.clear();
     }
 
-    // empty space pans
+    // empty space: box select or pan
+    if (boxSelect && (mode == EditMode::Edit || mode == EditMode::Object))
+    {
+        boxSelecting = true;
+        boxViewport = vpIndex;
+        boxX0 = boxX1 = px;
+        boxY0 = boxY1 = py;
+        return;
+    }
     panning = true;
     panViewport = vpIndex;
     lastPanPx = px;
@@ -1160,6 +1339,14 @@ void Editor::handleTouchMove(int px, int py)
         }
     }
 
+    // track the rubber-band box, applied on release
+    if (boxSelecting)
+    {
+        boxX1 = px;
+        boxY1 = py;
+        return;
+    }
+
     if (!dragMoved)
         return;
 
@@ -1237,6 +1424,7 @@ void Editor::handleTouchUp(int px, int py)
     exportMenu.finishTouch();
     viewMenu.finishTouch();
     gridMenu.finishTouch();
+    selectMenu.finishTouch();
     texActionMenu.finishTouch();
     tex.texModeMenu.finishTouch();
 
@@ -1246,8 +1434,14 @@ void Editor::handleTouchUp(int px, int py)
         return;
     }
 
-    // a plain tap on an already selected item deselects it (a new one was added on press)
-    if (!dragMoved)
+    if (boxSelecting)
+    {
+        applyBoxSelect();
+        boxSelecting = false;
+        boxViewport = -1;
+    }
+    // greedy: tap an already-selected item to toggle it off
+    else if (!dragMoved && greedySelect)
     {
         if (mode == EditMode::Edit && subLevel == SubLevel::Vertex &&
             pressedVertObj >= 0 && pressedVertWasSelected)
@@ -1288,6 +1482,33 @@ void Editor::handleTouchUp(int px, int py)
                 scene.selectedObjects.end());
         }
     }
+    else if (!dragMoved && !greedySelect)
+    {
+        // replace: tap one item of a group to isolate it
+        if (mode == EditMode::Edit && subLevel == SubLevel::Vertex &&
+            pressedVertObj >= 0 && pressedVertWasSelected)
+        {
+            scene.selectedVerts.clear();
+            scene.selectedVerts.push_back({pressedVertObj, pressedVertIdx});
+        }
+        else if (mode == EditMode::Edit && subLevel == SubLevel::Edge &&
+                 pressedEdgeObj >= 0 && pressedEdgeWasSelected)
+        {
+            scene.selectedEdges.clear();
+            scene.selectedEdges.push_back({pressedEdgeObj, pressedEdgeV0, pressedEdgeV1});
+        }
+        else if (mode == EditMode::Edit && subLevel == SubLevel::Face &&
+                 pressedFaceObj >= 0 && pressedFaceWasSelected)
+        {
+            scene.selectedFaces.clear();
+            scene.selectedFaces.push_back({pressedFaceObj, pressedFaceIdx});
+        }
+        else if (mode == EditMode::Object && pressedObject >= 0 && pressedObjWasSelected)
+        {
+            scene.selectedObjects.clear();
+            scene.selectedObjects.push_back(pressedObject);
+        }
+    }
 
     if (pressedSub) // the pull drag (or any sub-object touch) ends the extrude
         extruding = false;
@@ -1307,6 +1528,8 @@ void Editor::handleTouchUp(int px, int py)
     panViewport = -1;
     paintingFaces = false;
     paintViewport = -1;
+    boxSelecting = false;
+    boxViewport = -1;
 }
 
 void Editor::renderViewports(Renderer& r)

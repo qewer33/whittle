@@ -32,15 +32,23 @@ static void pushGrid(const Viewport& vp, float gridSpacing, Renderer& r)
     const float minY = vp.centerY - vp.spanY() / 2.0f;
     const float maxY = vp.centerY + vp.spanY() / 2.0f;
 
-    const float startX = floorf(minX / gridSpacing) * gridSpacing;
-    const float startY = floorf(minY / gridSpacing) * gridSpacing;
+    // coarsen the drawn grid as the view zooms out so the line count stays
+    // bounded. step is a power-of-2 multiple of the base, so lines still land on
+    // real grid positions. budget is per axis, keeping the total under the buffer.
+    float step = gridSpacing;
+    const float maxSpan = fmaxf(vp.spanX(), vp.spanY());
+    while (maxSpan / step > 60.0f)
+        step *= 2.0f;
+
+    const float startX = floorf(minX / step) * step;
+    const float startY = floorf(minY / step) * step;
 
     Line lines[128];
     int n = 0;
 
-    for (float x = startX; x <= maxX + 0.001f && n < 120; x += gridSpacing)
+    for (float x = startX; x <= maxX + 0.001f && n < 128; x += step)
     {
-        const float xp = snapToGrid(x, gridSpacing);
+        const float xp = snapToGrid(x, step);
         if (xp < minX - 0.001f)
             continue;
         Vec3 a = {0, 0, 0}, b = {0, 0, 0};
@@ -50,9 +58,9 @@ static void pushGrid(const Viewport& vp, float gridSpacing, Renderer& r)
         setAxis(b, vp.axisY, maxY);
         lines[n++] = {a, b};
     }
-    for (float y = startY; y <= maxY + 0.001f && n < 120; y += gridSpacing)
+    for (float y = startY; y <= maxY + 0.001f && n < 128; y += step)
     {
-        const float yp = snapToGrid(y, gridSpacing);
+        const float yp = snapToGrid(y, step);
         if (yp < minY - 0.001f)
             continue;
         Vec3 a = {0, 0, 0}, b = {0, 0, 0};
@@ -64,7 +72,7 @@ static void pushGrid(const Viewport& vp, float gridSpacing, Renderer& r)
     }
 
     const C3D_Mtx m = vp.matrix();
-    r.drawLineSet(lines, n, m, kGridCol, 240, 320);
+    r.drawLineSet(lines, n, m, kGridCol, 240, 320, 1.0f);
 }
 
 static void pushMeshLines(const Viewport& vp, const Mesh& mesh, Renderer& r, u32 color)

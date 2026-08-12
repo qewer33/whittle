@@ -60,6 +60,8 @@ set(ICON_PNGS
     ${ICON_DIR}/36_back.png ${ICON_DIR}/37_export.png
     ${ICON_DIR}/38_grid_half.png ${ICON_DIR}/39_grid_default.png
     ${ICON_DIR}/40_grid_double.png ${ICON_DIR}/41_grid_off.png
+    ${ICON_DIR}/42_select.png ${ICON_DIR}/43_sel_greedy.png
+    ${ICON_DIR}/44_sel_box.png ${ICON_DIR}/45_sel_deep.png
 )
 set(ICON_T3X ${CMAKE_CURRENT_BINARY_DIR}/icons.t3x)
 add_custom_command(
