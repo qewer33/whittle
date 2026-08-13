@@ -62,7 +62,7 @@ enum class FileOp
 // the texture workspace lives in a separate TextureEditor (member `tex`).
 struct Editor
 {
-    static constexpr int kNumShapes = 5; // cube, sphere, pyramid, cylinder, plane
+    static constexpr int kNumShapes = 10; // see the shapeMenu / addShape order
     static constexpr int kNumModes = 4;  // object, model, paint, texture
     static constexpr int kNumMenu = 4;   // save, load, export, exit
     static constexpr int kNumView = 4;   // wireframe, faces, flip, shading

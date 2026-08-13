@@ -160,10 +160,15 @@ int Scene::addShape(int kind)
     switch (kind)
     {
     case 0: m = makeCube(1.0f); break;
-    case 1: m = makeSphere(0.5f); break;
-    case 2: m = makePyramid(1.0f); break;
-    case 3: m = makeCylinder(0.5f, 1.0f); break;
+    case 1: m = makeWedge(1.0f); break;
+    case 2: m = makePrism(0.5f, 1.0f); break;
+    case 3: m = makePyramid(1.0f); break;
     case 4: m = makePlane(1.0f); break;
+    case 5: m = makeSphere(0.5f); break;
+    case 6: m = makeCylinder(0.5f, 1.0f); break;
+    case 7: m = makeCone(0.5f, 1.0f); break;
+    case 8: m = makeTorus(0.5f, 0.2f); break;
+    case 9: m = makeCircle(0.5f); break;
     default: return -1;
     }
 

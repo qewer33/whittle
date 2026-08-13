@@ -72,8 +72,8 @@ struct Scene
     std::vector<u32> texture;
     bool textureDirty = true;
 
-    // spawn a primitive at origin (0=cube,1=sphere,2=pyramid,3=cylinder,
-    // 4=plane), returns its index or -1. clears selection, snapshots.
+    // spawn a primitive at origin by kind (see the switch in addShape), returns
+    // its index or -1. clears selection, snapshots.
     int addShape(int kind);
     void deleteSelectedObjects();
     void deleteSelectedVerts();

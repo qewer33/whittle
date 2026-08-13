@@ -225,3 +225,122 @@ Mesh makeSphere(float radius)
         m.faces.push_back(tri(m.positions, bottom, R(stacks - 1, i), R(stacks - 1, i + 1), base));
     return m;
 }
+
+Mesh makeCone(float radius, float height)
+{
+    Mesh m;
+    const int N = 8;
+    const u32 base = 0xE08040FF;
+    const float PI = 3.14159265f;
+    const float hy = height * 0.5f;
+
+    for (int i = 0; i < N; i++) // bottom ring: 0..N-1
+    {
+        const float th = 2 * PI * i / N;
+        m.positions.push_back({radius * cosf(th), -hy, radius * sinf(th)});
+    }
+    const int apex = (int)m.positions.size();
+    m.positions.push_back({0, hy, 0});
+    const int bc = (int)m.positions.size();
+    m.positions.push_back({0, -hy, 0});
+
+    auto B = [&](int i) { return i % N; };
+    for (int i = 0; i < N; i++) // slope
+        m.faces.push_back(tri(m.positions, apex, B(i + 1), B(i), base));
+    for (int i = 0; i < N; i++) // bottom cap
+        m.faces.push_back(tri(m.positions, bc, B(i), B(i + 1), base));
+    return m;
+}
+
+Mesh makeTorus(float radius, float tube)
+{
+    Mesh m;
+    const int S = 8; // segments around the main ring
+    const int T = 6; // segments around the tube
+    const u32 base = 0xB060E0FF;
+    const float PI = 3.14159265f;
+
+    for (int i = 0; i < S; i++)
+    {
+        const float a = 2 * PI * i / S;
+        const float ca = cosf(a), sa = sinf(a);
+        for (int j = 0; j < T; j++)
+        {
+            const float b = 2 * PI * j / T;
+            const float rr = radius + tube * cosf(b);
+            m.positions.push_back({rr * ca, tube * sinf(b), rr * sa});
+        }
+    }
+    auto V = [&](int i, int j) { return (i % S) * T + (j % T); };
+    for (int i = 0; i < S; i++)
+        for (int j = 0; j < T; j++)
+            m.faces.push_back(
+                quad(m.positions, V(i, j), V(i, j + 1), V(i + 1, j + 1), V(i + 1, j), base));
+    return m;
+}
+
+Mesh makeWedge(float size)
+{
+    Mesh m;
+    const float s = size * 0.5f;
+    const u32 base = 0xE0C040FF;
+    // ramp: high edge along +X (y=+s), sloping down to the -X bottom edge
+    m.positions = {
+        {-s, -s, -s}, {s, -s, -s}, {s, -s, s}, {-s, -s, s}, // 0..3 bottom
+        {s, s, -s},   {s, s, s},                            // 4,5 top edge at +X
+    };
+    m.faces.push_back(quad(m.positions, 0, 1, 2, 3, base)); // bottom -Y
+    m.faces.push_back(quad(m.positions, 1, 4, 5, 2, base)); // back +X
+    m.faces.push_back(quad(m.positions, 4, 0, 3, 5, base)); // slope
+    m.faces.push_back(tri(m.positions, 1, 0, 4, base));     // -Z side
+    m.faces.push_back(tri(m.positions, 3, 2, 5, base));     // +Z side
+    return m;
+}
+
+Mesh makePrism(float radius, float height)
+{
+    Mesh m;
+    const int N = 3;
+    const u32 base = 0x50C878FF;
+    const float PI = 3.14159265f;
+    const float hy = height * 0.5f;
+
+    for (int i = 0; i < N; i++) // top ring: 0..2
+    {
+        const float th = 2 * PI * i / N;
+        m.positions.push_back({radius * cosf(th), hy, radius * sinf(th)});
+    }
+    for (int i = 0; i < N; i++) // bottom ring: 3..5
+    {
+        const float th = 2 * PI * i / N;
+        m.positions.push_back({radius * cosf(th), -hy, radius * sinf(th)});
+    }
+    auto T = [&](int i) { return i % N; };
+    auto B = [&](int i) { return N + i % N; };
+    for (int i = 0; i < N; i++)
+        m.faces.push_back(quad(m.positions, T(i), T(i + 1), B(i + 1), B(i), base));
+    m.faces.push_back(tri(m.positions, T(0), T(2), T(1), base)); // top +Y
+    m.faces.push_back(tri(m.positions, B(0), B(1), B(2), base)); // bottom -Y
+    return m;
+}
+
+Mesh makeCircle(float radius)
+{
+    Mesh m;
+    const int N = 12;
+    const u32 base = 0xB0B0B8FF;
+    const float PI = 3.14159265f;
+
+    m.positions.push_back({0, 0, 0}); // center = 0
+    for (int i = 0; i < N; i++)
+    {
+        const float th = 2 * PI * i / N;
+        m.positions.push_back({radius * cosf(th), 0, radius * sinf(th)});
+    }
+    auto R = [&](int i) { return 1 + i % N; };
+    for (int i = 0; i < N; i++) // +Y up
+        m.faces.push_back(tri(m.positions, 0, R(i + 1), R(i), base));
+    for (int i = 0; i < N; i++) // -Y down (double sided)
+        m.faces.push_back(tri(m.positions, 0, R(i), R(i + 1), base));
+    return m;
+}

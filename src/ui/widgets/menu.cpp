@@ -7,13 +7,14 @@ namespace widgets
 {
     void Menu::setup(Rect anchor, Placement place, Align align, int width,
                      std::initializer_list<MenuItem> items, bool closeOnPick,
-                     const char* title)
+                     const char* title, int cols)
     {
         anchor_ = anchor;
         place_ = place;
         align_ = align;
         width_ = width;
         closeOnPick_ = closeOnPick;
+        cols_ = cols < 1 ? 1 : cols;
         hasTitle_ = title != nullptr;
         if (hasTitle_)
         {
@@ -48,15 +49,19 @@ namespace widgets
     int Menu::topY() const
     {
         if (place_ == Placement::Above)
-            return anchor_.y - (headerH() + count() * kItemH);
+            return anchor_.y - (headerH() + rows() * kItemH);
         if (place_ == Placement::LeftOf)
             return anchor_.y;
         return anchor_.y + anchor_.h;
     }
 
+    // column-major: the first rows() items fill the left column, and so on
     Rect Menu::itemRect(int i) const
     {
-        return {leftX(), topY() + headerH() + i * kItemH, width_, kItemH};
+        const int r = rows();
+        const int col = i / r, row = i % r;
+        const int cellW = width_ / cols_;
+        return {leftX() + col * cellW, topY() + headerH() + row * kItemH, cellW, kItemH};
     }
 
     void Menu::draw(const bool* on) const
@@ -65,7 +70,7 @@ namespace widgets
         if (n == 0)
             return;
 
-        raisedButton(leftX(), topY() - 1, width_, headerH() + n * kItemH + 2, false);
+        raisedButton(leftX(), topY() - 1, width_, headerH() + rows() * kItemH + 2, false);
 
         if (hasTitle_)
         {
@@ -75,6 +80,10 @@ namespace widgets
                          conv(kIconIdle));
             C2D_DrawRectSolid(hx, hy + kHeaderH - 1, 0.0f, width_, 1, conv(kBarHighlight));
         }
+        const int cellW = width_ / cols_;
+        for (int c = 1; c < cols_; c++) // divider between columns
+            C2D_DrawRectSolid(leftX() + c * cellW, topY() + headerH(), 0.0f, 1,
+                              rows() * kItemH, conv(kBarHighlight));
         for (int i = 0; i < n; i++)
         {
             const Rect r = itemRect(i);

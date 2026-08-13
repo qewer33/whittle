@@ -24,7 +24,7 @@ namespace widgets
 
         void setup(Rect anchor, Placement place, Align align, int width,
                    std::initializer_list<MenuItem> items, bool closeOnPick = true,
-                   const char* title = nullptr);
+                   const char* title = nullptr, int cols = 1);
 
         int count() const { return (int)icons_.size(); }
         Rect itemRect(int i) const;
@@ -49,12 +49,14 @@ namespace widgets
         bool hasTitle_ = false;
         C2D_Text title_{};
         float titleH_ = 0.0f;
+        int cols_ = 1;
         static constexpr int kItemH = 24;
         static constexpr int kHeaderH = 22;
         bool closePending_ = false;
         int pressedItem_ = -1;
 
         int headerH() const { return hasTitle_ ? kHeaderH : 0; }
+        int rows() const { return (count() + cols_ - 1) / cols_; }
         int leftX() const;
         int topY() const;
     };

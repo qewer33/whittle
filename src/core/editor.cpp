@@ -106,10 +106,12 @@ Editor::Editor()
                    {{Icon_Box, "Object"}, {Icon_Pencil, "Edit"}, {Icon_Paint, "Paint"},
                     {Icon_Texture, "Texture"}},
                    true, "Mode");
-    shapeMenu.setup(btnAdd, Placement::Below, Align::Start, 90,
-                    {{Icon_Box, "Cube"}, {Icon_Circle, "Sphere"}, {Icon_Pyramid, "Pyramid"},
-                     {Icon_Cylinder, "Cylinder"}, {Icon_Square, "Plane"}},
-                    true, "Add Object");
+    shapeMenu.setup(btnAdd, Placement::Below, Align::Start, 180,
+                    {{Icon_Box, "Cube"}, {Icon_Wedge, "Wedge"}, {Icon_Prism, "Prism"},
+                     {Icon_Pyramid, "Pyramid"}, {Icon_Square, "Plane"}, {Icon_Circle, "Sphere"},
+                     {Icon_Cylinder, "Cylinder"}, {Icon_Cone, "Cone"}, {Icon_Torus, "Torus"},
+                     {Icon_Disc, "Circle"}},
+                    true, "Add Object", 2);
     fileMenu.setup(btnMenu, Placement::Below, Align::End, 90,
                    {{Icon_Save, "Save"}, {Icon_Load, "Load"}, {Icon_Export, "Export"},
                     {Icon_Exit, "Exit"}},

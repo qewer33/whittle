@@ -56,6 +56,11 @@ icons=(
   "43_sel_greedy:copy-plus"
   "44_sel_box:square-dashed"
   "45_sel_deep:send-to-back"
+  "46_cone:cone"
+  "47_torus:torus"
+  "48_wedge:triangle-right"
+  "49_prism:triangle"
+  "50_circle_disc:disc"
 )
 
 tmp="$(mktemp -d)"

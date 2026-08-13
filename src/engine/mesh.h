@@ -71,3 +71,8 @@ Mesh makeSphere(float radius);
 Mesh makePyramid(float size);
 Mesh makeCylinder(float radius, float height);
 Mesh makePlane(float size);
+Mesh makeCone(float radius, float height);
+Mesh makeTorus(float radius, float tube);
+Mesh makeWedge(float size);
+Mesh makePrism(float radius, float height);
+Mesh makeCircle(float radius);

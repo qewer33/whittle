@@ -62,6 +62,9 @@ set(ICON_PNGS
     ${ICON_DIR}/40_grid_double.png ${ICON_DIR}/41_grid_off.png
     ${ICON_DIR}/42_select.png ${ICON_DIR}/43_sel_greedy.png
     ${ICON_DIR}/44_sel_box.png ${ICON_DIR}/45_sel_deep.png
+    ${ICON_DIR}/46_cone.png ${ICON_DIR}/47_torus.png
+    ${ICON_DIR}/48_wedge.png ${ICON_DIR}/49_prism.png
+    ${ICON_DIR}/50_circle_disc.png
 )
 set(ICON_T3X ${CMAKE_CURRENT_BINARY_DIR}/icons.t3x)
 add_custom_command(

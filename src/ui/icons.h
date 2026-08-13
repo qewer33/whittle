@@ -51,6 +51,11 @@ enum Icon
     Icon_SelGreedy,
     Icon_SelBox,
     Icon_SelDeep,
+    Icon_Cone,
+    Icon_Torus,
+    Icon_Wedge,
+    Icon_Prism,
+    Icon_Disc,
     Icon_Count,
 };
 
