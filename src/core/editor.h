@@ -207,11 +207,15 @@ private:
     static constexpr float kSelectRadiusPx = 14.0f;
     static constexpr float kDragThresholdPx = 4.0f;
     static constexpr float kZoomScale = 112.5f; // scale = kZoomScale / distance
-    static constexpr float kRotSnap = 0.2617993878f; // 15 deg
-    static constexpr float kScaleSnap = 0.25f;
+    static constexpr float kRotSnap = 0.2617993878f; // 15 deg at the base grid
+    static constexpr float kScaleSnap = 0.25f;       // at the base grid
     static constexpr float kUniformRefPx = 40.0f; // uniform-scale drag to double the size
 
     float gridSpacing() const;
+    // rotate/scale snap steps track the grid preset, 0 when the grid is off
+    float gridRatio() const { return gridSpacing() / kSnap; } // Half .5, Double 2, Off 0
+    float rotSnap() const { return kRotSnap * gridRatio(); }
+    float scaleSnap() const { return kScaleSnap * gridRatio(); }
 
     bool touching = false;
     bool pressInViewport = false;

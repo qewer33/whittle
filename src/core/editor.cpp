@@ -1147,7 +1147,9 @@ void Editor::applyObjectDrag(const Viewport& vp, float wx, float wy)
         const float a0 = atan2f(dragStartWy - pb, dragStartWx - pa);
         const float a1 = atan2f(wy - pb, wx - pa);
         float d = a1 - a0;
-        d = roundf(d / kRotSnap) * kRotSnap;
+        const float rs = rotSnap();
+        if (rs > 0.0f)
+            d = roundf(d / rs) * rs; // grid off: free rotation
         c = cosf(d);
         s = sinf(d);
     }
@@ -1168,8 +1170,10 @@ void Editor::applyObjectDrag(const Viewport& vp, float wx, float wy)
             const float g1 = (gizmoAxis == ax) ? (wx - pa) : (wy - pb);
             factor = (fabsf(g0) > 1e-3f) ? g1 / g0 : 1.0f;
         }
-        factor = snapToGrid(factor, kScaleSnap);
-        if (factor < kScaleSnap) factor = kScaleSnap;
+        const float ss = scaleSnap();
+        factor = snapToGrid(factor, ss); // grid off: free scale
+        const float minF = ss > 0.0f ? ss : 0.01f;
+        if (factor < minF) factor = minF;
     }
 
     for (size_t j = 0; j < scene.selectedObjects.size(); j++)
